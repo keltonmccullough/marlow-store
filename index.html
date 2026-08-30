@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AutoStore $500 Goal</title>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #f3f4f6;
+  color: #111827;
+  font-family: Arial, sans-serif;
+}
+
+header {
+  background: #111827;
+  color: white;
+  text-align: center;
+  padding: 22px;
+}
+
+.container {
+  max-width: 900px;
+  margin: auto;
+  padding: 15px;
+}
+
+.card {
+  background: white;
+  padding: 20px;
+  margin-bottom: 16px;
+  border-radius: 12px;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.stat {
+  background: #eef2ff;
+  padding: 18px;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.stat strong {
+  display: block;
+  font-size: 24px;
+  margin-top: 8px;
+}
+
+.progress {
+  height: 20px;
+  background: #e5e7eb;
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.bar {
+  height: 100%;
+  background: #16a34a;
+  width: 0%;
+  transition: 0.3s;
+}
+
+input {
+  width: 100%;
+  padding: 12px;
+  margin: 7px 0;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+}
+
+button {
+  background: #2563eb;
+  color: white;
+  border: 0;
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-weight: bold;
+  margin-top: 7px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #1d4ed8;
+}
+
+button:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+.product {
+  border-top: 1px solid #e5e7eb;
+  padding: 15px 0;
+}
+
+.price {
+  font-size: 20px;
+  font-weight: bold;
+  color: #16a34a;
+}
+
+.good {
+  color: #16a34a;
+  font-weight: bold;
+}
+
+.bad {
+  color: #dc2626;
+  font-weight: bold;
+}
+
+.small {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+@media (max-width: 600px) {
+  .stats {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>AutoStore</h1>
+  <p>Automatic Store Profit Target</p>
+</header>
+
+<div class="container">
+
+  <div class="card">
+    <h2>🎯 Daily Goal</h2>
+
+    <div class="stats">
+      <div class="stat">
+        Today's Profit
+        <strong id="profit">$0.00</strong>
+      </div>
+
+      <div class="stat">
+        Sales Needed
+        <strong id="needed">-</strong>
+      </div>
+    </div>
+
+    <br>
+
+    <div class="progress">
+      <div class="bar" id="bar"></div>
+    </div>
+
+    <p id="progressText">0% of $500 goal</p>
+  </div>
+
+
+  <div class="card">
+    <h2>💰 Profit Rules</h2>
+
+    <label>Markup per product ($)</label>
+    <input
+      id="markup"
+      type="number"
+      value="1"
+      step="0.01"
+      onchange="refresh()"
+    >
+
+    <label>Minimum net profit per sale ($)</label>
+    <input
+      id="minimumProfit"
+      type="number"
+      value="5"
+      step="0.01"
+      onchange="refresh()"
+    >
+
+    <label>Estimated payment fee (%)</label>
+    <input
+      id="paymentFee"
+      type="number"
+      value="3"
+      step="0.1"
+      onchange="refresh()"
+    >
+
+    <p class="small">
+      Products will be marked eligible when they meet your minimum profit.
+    </p>
+  </div>
+
+
+  <div class="card">
+    <h2>🔎 Product Finder</h2>
+
+    <input
+      id="search"
+      placeholder="Search products..."
+      oninput="displayProducts()"
+    >
+
+    <button onclick="findProducts()">
+      Find Products
+    </button>
+
+    <div id="products"></div>
+  </div>
+
+</div>
+
+
+<script>
+
+const DAILY_GOAL = 500;
+
+let markup = 1;
+let minimumProfit = 5;
+let paymentFee = 3;
+let totalProfit = 0;
+
+
+/* DEMO PRODUCTS
+   A real version can later connect to approved supplier APIs.
+*/
+
+const products = [
+  {
+    name: "Phone Stand",
+    cost: 9.99,
+    stock: 40
+  },
+  {
+    name: "LED Desk Lamp",
+    cost: 16.99,
+    stock: 25
+  },
+  {
+    name: "Bluetooth Speaker",
+    cost: 24.99,
+    stock: 18
+  },
+  {
+    name: "Wireless Charger",
+    cost: 14.99,
+    stock: 30
+  },
+  {
+    name: "USB-C Hub",
+    cost: 19.99,
+    stock: 22
+  }
+];
+
+
+function settings() {
+
+  markup =
+    parseFloat(document.getElementById("markup").value) || 0;
+
+  minimumProfit =
+    parseFloat(document.getElementById("minimumProfit").value) || 0;
+
+  paymentFee =
+    parseFloat(document.getElementById("paymentFee").value) || 0;
+}
+
+
+function sellingPrice(product) {
+
+  return product.cost + markup;
+}
+
+
+function paymentCost(product) {
+
+  return sellingPrice(product) * (paymentFee / 100);
+}
+
+
+function netProfit(product) {
+
+  return sellingPrice(product)
+    - product.cost
+    - paymentCost(product);
+}
+
+
+function displayProducts() {
+
+  settings();
+
+  const search =
+    document.getElementById("search").value.toLowerCase();
+
+  const container =
+    document.getElementById("products");
+
+  const filtered =
+    products.filter(product =>
+      product.name.toLowerCase().includes(search)
+    );
+
+  container.innerHTML = "";
+
+  filtered.forEach((product) => {
+
+    const price = sellingPrice(product);
+    const profit = netProfit(product);
+    const eligible = profit >= minimumProfit;
+
+    container.innerHTML += `
+
+      <div class="product">
+
+        <h3>${product.name}</h3>
+
+        <p class="small">
+          Supplier cost: $${product.cost.toFixed(2)}
+        </p>
+
+        <p class="price">
+          Selling price: $${price.toFixed(2)}
+        </p>
+
+        <p>
+          Estimated net profit:
+          <strong class="${eligible ? "good" : "bad"}">
+            $${profit.toFixed(2)}
+          </strong>
+        </p>
+
+        <p class="small">
+          Stock: ${product.stock}
+        </p>
+
+        <p class="${eligible ? "good" : "bad"}">
+          ${eligible
+            ? "✓ Eligible to list"
+            : "✗ Below minimum profit"}
+        </p>
+
+        <button
+          onclick="testSale(${products.indexOf(product)})"
+          ${eligible && product.stock > 0 ? "" : "disabled"}
+        >
+          Test Sale
+        </button>
+
+      </div>
+    `;
+  });
+
+  updateGoal();
+}
+
+
+function testSale(index) {
+
+  settings();
+
+  const product = products[index];
+
+  const profit = netProfit(product);
+
+  if (profit < minimumProfit) {
+
+    alert("This product does not meet your minimum profit.");
+
+    return;
+  }
+
+  if (product.stock <= 0) {
+
+    alert("This product is out of stock.");
+
+    return;
+  }
+
+  totalProfit += profit;
+
+  product.stock--;
+
+  displayProducts();
+}
+
+
+function updateGoal() {
+
+  const remaining =
+    Math.max(0, DAILY_GOAL - totalProfit);
+
+  let bestProfit = 0;
+
+  products.forEach(product => {
+
+    const profit = netProfit(product);
+
+    if (profit > bestProfit) {
+      bestProfit = profit;
+    }
+
+  });
+
+  let salesNeeded = "-";
+
+  if (bestProfit > 0) {
+
+    salesNeeded =
+      Math.ceil(remaining / bestProfit);
+  }
+
+  const percentage =
+    Math.min(
+      100,
+      (totalProfit / DAILY_GOAL) * 100
+    );
+
+  document.getElementById("profit").textContent =
+    "$" + totalProfit.toFixed(2);
+
+  document.getElementById("needed").textContent =
+    salesNeeded;
+
+  document.getElementById("bar").style.width =
+    percentage + "%";
+
+  document.getElementById("progressText").textContent =
+    percentage.toFixed(0) +
+    "% of $" +
+    DAILY_GOAL +
+    " goal";
+}
+
+
+function findProducts() {
+
+  alert(
+    "Demo product search complete. " +
+    "The production version can connect to approved supplier APIs."
+  );
+
+  displayProducts();
+}
+
+
+function refresh() {
+
+  displayProducts();
+}
+
+
+displayProducts();
+
+</script>
+
+</body>
+</html>
