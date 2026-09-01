@@ -5,176 +5,184 @@ import { useMemo, useState } from "react";
 const products = [
   {
     id: 1,
-    name: "Wireless Bluetooth Headphones",
-    price: 39.99,
-    oldPrice: 59.99,
+    name: "Wireless Noise-Canceling Headphones",
+    price: 89.99,
+    oldPrice: 129.99,
     category: "Electronics",
     rating: 4.8,
-    reviews: 1247,
+    reviews: 2841,
+    badge: "Best Seller",
     image:
-      "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=900&q=85",
+      "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=1000&q=90",
     description:
-      "Premium wireless headphones with comfortable ear cushions, clear sound, and long-lasting battery life.",
+      "Premium wireless headphones designed for immersive sound, comfortable all-day listening, and dependable battery life.",
   },
   {
     id: 2,
-    name: "Smart Watch",
-    price: 49.99,
-    oldPrice: 79.99,
+    name: "Premium Smart Watch",
+    price: 79.99,
+    oldPrice: 119.99,
     category: "Electronics",
     rating: 4.7,
-    reviews: 892,
+    reviews: 1934,
+    badge: "Popular",
     image:
-      "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=900&q=85",
+      "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=1000&q=90",
     description:
-      "A modern smartwatch for everyday activity tracking, notifications, and staying connected.",
+      "A modern smartwatch with activity tracking, notifications, and an elegant everyday design.",
   },
   {
     id: 3,
-    name: "Stainless Steel Water Bottle",
-    price: 24.99,
-    oldPrice: 34.99,
-    category: "Home & Kitchen",
+    name: "Insulated Stainless Steel Bottle",
+    price: 29.99,
+    oldPrice: 39.99,
+    category: "Home",
     rating: 4.9,
-    reviews: 2156,
+    reviews: 3267,
+    badge: "Top Rated",
     image:
-      "https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&w=900&q=85",
+      "https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&w=1000&q=90",
     description:
-      "Durable reusable stainless steel bottle designed to keep beverages cold or hot.",
+      "Durable insulated bottle designed to keep drinks cold or hot throughout the day.",
   },
   {
     id: 4,
-    name: "Portable Bluetooth Speaker",
-    price: 34.99,
-    oldPrice: 49.99,
+    name: "Portable Wireless Speaker",
+    price: 44.99,
+    oldPrice: 59.99,
     category: "Electronics",
-    rating: 4.6,
-    reviews: 734,
+    rating: 4.7,
+    reviews: 1482,
+    badge: "Deal",
     image:
-      "https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?auto=format&fit=crop&w=900&q=85",
+      "https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?auto=format&fit=crop&w=1000&q=90",
     description:
-      "Portable wireless speaker with rich sound and a compact design for home or travel.",
+      "Compact wireless speaker with rich audio and a portable design made for home or travel.",
   },
   {
     id: 5,
     name: "Modern LED Desk Lamp",
-    price: 29.99,
-    oldPrice: 44.99,
-    category: "Home & Kitchen",
+    price: 34.99,
+    oldPrice: 49.99,
+    category: "Home",
     rating: 4.8,
-    reviews: 631,
+    reviews: 921,
+    badge: "Popular",
     image:
-      "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=900&q=85",
+      "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=1000&q=90",
     description:
-      "Modern LED lighting for desks, offices, bedrooms, studying, and everyday use.",
+      "Clean modern lighting for desks, bedrooms, offices, studying, and everyday use.",
   },
   {
     id: 6,
     name: "Everyday Travel Backpack",
-    price: 44.99,
-    oldPrice: 64.99,
+    price: 54.99,
+    oldPrice: 74.99,
     category: "Travel",
     rating: 4.8,
-    reviews: 1104,
+    reviews: 1763,
+    badge: "Best Seller",
     image:
-      "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=900&q=85",
+      "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=1000&q=90",
     description:
-      "Durable backpack with plenty of space for electronics, school supplies, clothing, and travel gear.",
+      "A versatile backpack with organized storage for work, school, electronics, and travel.",
   },
   {
     id: 7,
-    name: "Soft Premium Throw Blanket",
-    price: 32.99,
-    oldPrice: 49.99,
-    category: "Home & Kitchen",
+    name: "Ultra Soft Home Throw",
+    price: 39.99,
+    oldPrice: 54.99,
+    category: "Home",
     rating: 4.9,
-    reviews: 1834,
+    reviews: 2478,
+    badge: "Top Rated",
     image:
-      "https://images.unsplash.com/photo-1584100936595-c0654b55a2e2?auto=format&fit=crop&w=900&q=85",
+      "https://images.unsplash.com/photo-1584100936595-c0654b55a2e2?auto=format&fit=crop&w=1000&q=90",
     description:
-      "Soft and comfortable decorative blanket for relaxing at home.",
+      "A soft, comfortable throw designed to add warmth and style to your living space.",
   },
   {
     id: 8,
-    name: "Kitchen Organization Set",
-    price: 27.99,
-    oldPrice: 39.99,
-    category: "Home & Kitchen",
+    name: "Kitchen Organization Collection",
+    price: 31.99,
+    oldPrice: 44.99,
+    category: "Home",
     rating: 4.7,
-    reviews: 508,
+    reviews: 1107,
+    badge: "Deal",
     image:
-      "https://images.unsplash.com/photo-1556911220-bff31c812dba?auto=format&fit=crop&w=900&q=85",
+      "https://images.unsplash.com/photo-1556911220-bff31c812dba?auto=format&fit=crop&w=1000&q=90",
     description:
-      "Useful organization pieces designed to help keep your kitchen neat and organized.",
+      "Practical organization pieces designed to make everyday kitchen storage easier.",
   },
 ];
 
 const categories = [
   "All",
   "Electronics",
-  "Home & Kitchen",
-  "Travel",
+  "Home",
   "Clothing",
   "Beauty",
   "Sports",
   "Toys",
+  "Travel",
   "Tools",
 ];
 
 export default function Home() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [cart, setCart] = useState([]);
+  const [product, setProduct] = useState(null);
   const [cartOpen, setCartOpen] = useState(false);
+  const [cart, setCart] = useState([]);
 
-  const filteredProducts = useMemo(() => {
-    const term = search.trim().toLowerCase();
+  const filtered = useMemo(() => {
+    const query = search.trim().toLowerCase();
 
-    return products.filter((product) => {
-      const matchesCategory =
-        category === "All" || product.category === category;
+    return products.filter((item) => {
+      const categoryMatch =
+        category === "All" || item.category === category;
 
-      const matchesSearch =
-        !term ||
-        product.name.toLowerCase().includes(term) ||
-        product.category.toLowerCase().includes(term) ||
-        product.description.toLowerCase().includes(term);
+      const searchMatch =
+        !query ||
+        item.name.toLowerCase().includes(query) ||
+        item.category.toLowerCase().includes(query) ||
+        item.description.toLowerCase().includes(query);
 
-      return matchesCategory && matchesSearch;
+      return categoryMatch && searchMatch;
     });
   }, [search, category]);
 
-  const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const cartCount = cart.reduce((total, item) => total + item.quantity, 0);
 
   const cartTotal = cart.reduce(
-    (sum, item) => sum + item.price * item.quantity,
+    (total, item) => total + item.price * item.quantity,
     0
   );
 
-  function addToCart(product) {
+  function addToCart(item) {
     setCart((current) => {
-      const existing = current.find((item) => item.id === product.id);
+      const existing = current.find((x) => x.id === item.id);
 
       if (existing) {
-        return current.map((item) =>
-          item.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
+        return current.map((x) =>
+          x.id === item.id
+            ? { ...x, quantity: x.quantity + 1 }
+            : x
         );
       }
 
-      return [...current, { ...product, quantity: 1 }];
+      return [...current, { ...item, quantity: 1 }];
     });
   }
 
-  function buyNow(product) {
-    addToCart(product);
+  function buyNow(item) {
+    addToCart(item);
+    setProduct(null);
     setCartOpen(true);
-    setSelectedProduct(null);
   }
 
-  function changeQuantity(id, amount) {
+  function updateQuantity(id, amount) {
     setCart((current) =>
       current
         .map((item) =>
@@ -186,18 +194,8 @@ export default function Home() {
     );
   }
 
-  function removeFromCart(id) {
-    setCart((current) => current.filter((item) => item.id !== id));
-  }
-
-  function openProduct(product) {
-    setSelectedProduct(product);
-    setCartOpen(false);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
-  function goHome() {
-    setSelectedProduct(null);
+  function showHome() {
+    setProduct(null);
     setCartOpen(false);
     setSearch("");
     setCategory("All");
@@ -211,9 +209,13 @@ export default function Home() {
           box-sizing: border-box;
         }
 
+        html {
+          scroll-behavior: smooth;
+        }
+
         body {
           margin: 0;
-          background: #f6f7f9;
+          background: #f7f7f5;
           color: #171717;
           font-family: Arial, Helvetica, sans-serif;
         }
@@ -227,297 +229,345 @@ export default function Home() {
           cursor: pointer;
         }
 
-        .marlow-header {
-          background: #ffffff;
-          border-bottom: 1px solid #e5e7eb;
+        .header {
           position: sticky;
           top: 0;
-          z-index: 50;
+          z-index: 100;
+          background: rgba(255,255,255,.97);
+          backdrop-filter: blur(12px);
+          border-bottom: 1px solid #e8e8e8;
         }
 
-        .topbar {
-          max-width: 1400px;
+        .header-main {
+          max-width: 1440px;
           margin: auto;
-          min-height: 76px;
+          padding: 17px 28px;
           display: flex;
           align-items: center;
-          gap: 24px;
-          padding: 12px 24px;
+          gap: 28px;
         }
 
-        .logo {
+        .brand {
           border: 0;
-          background: none;
-          font-size: 30px;
+          background: transparent;
+          padding: 0;
+          text-align: left;
+          min-width: 145px;
+        }
+
+        .brand-name {
+          font-size: 31px;
           font-weight: 900;
-          letter-spacing: -1.5px;
-          color: #111827;
-          white-space: nowrap;
+          letter-spacing: -2px;
         }
 
-        .tagline {
-          font-size: 11px;
-          color: #6b7280;
-          margin-top: -4px;
+        .brand-sub {
+          display: block;
+          margin-top: 1px;
+          font-size: 10px;
+          color: #777;
+          letter-spacing: 1.8px;
+          text-transform: uppercase;
         }
 
-        .search-box {
+        .search {
           flex: 1;
-          max-width: 700px;
-          height: 48px;
+          height: 50px;
+          max-width: 760px;
           display: flex;
-          border: 2px solid #111827;
-          border-radius: 7px;
+          background: #f4f4f2;
+          border: 1px solid #dcdcdc;
+          border-radius: 9px;
           overflow: hidden;
+        }
+
+        .search:focus-within {
+          border-color: #222;
           background: white;
         }
 
-        .search-box input {
+        .search input {
           flex: 1;
           border: 0;
           outline: 0;
-          padding: 0 17px;
+          background: transparent;
+          padding: 0 18px;
           font-size: 15px;
         }
 
-        .search-button {
-          width: 58px;
+        .search button {
+          width: 55px;
           border: 0;
-          background: #111827;
+          background: #171717;
           color: white;
-          font-size: 22px;
+          font-size: 21px;
         }
 
-        .header-action {
+        .header-links {
+          display: flex;
+          align-items: center;
+          gap: 20px;
+          margin-left: auto;
+        }
+
+        .header-link {
           border: 0;
-          background: white;
-          color: #111827;
+          background: transparent;
+          font-size: 13px;
           font-weight: 700;
           white-space: nowrap;
         }
 
-        .cart-button {
-          position: relative;
-          border: 1px solid #d1d5db;
-          border-radius: 7px;
-          padding: 11px 17px;
+        .cart {
+          border: 1px solid #d4d4d4;
           background: white;
+          border-radius: 8px;
+          padding: 11px 15px;
           font-weight: 800;
+          white-space: nowrap;
         }
 
-        .cart-count {
+        .cart span {
           display: inline-flex;
-          align-items: center;
-          justify-content: center;
           min-width: 22px;
           height: 22px;
-          margin-left: 7px;
-          padding: 0 5px;
+          justify-content: center;
+          align-items: center;
+          margin-left: 5px;
           border-radius: 20px;
-          background: #111827;
+          background: #171717;
           color: white;
-          font-size: 12px;
+          font-size: 11px;
         }
 
-        .category-bar {
-          border-top: 1px solid #f0f0f0;
+        .nav {
+          border-top: 1px solid #eeeeee;
           background: white;
           overflow-x: auto;
         }
 
-        .category-inner {
-          max-width: 1400px;
+        .nav-inner {
+          max-width: 1440px;
           margin: auto;
+          padding: 0 28px;
           display: flex;
-          gap: 4px;
-          padding: 0 24px;
+          gap: 5px;
         }
 
-        .category {
+        .nav button {
           border: 0;
-          background: white;
+          background: transparent;
           padding: 13px 17px;
+          color: #555;
           font-size: 13px;
           font-weight: 700;
           white-space: nowrap;
-          color: #4b5563;
         }
 
-        .category.active {
-          color: #111827;
-          box-shadow: inset 0 -3px 0 #111827;
+        .nav button.active {
+          color: #111;
+          box-shadow: inset 0 -2px #111;
         }
 
-        .page {
-          max-width: 1400px;
+        .container {
+          max-width: 1440px;
           margin: auto;
-          padding: 24px;
+          padding: 28px;
         }
 
         .hero {
-          min-height: 330px;
-          border-radius: 14px;
-          background: linear-gradient(115deg, #111827 0%, #374151 100%);
+          min-height: 390px;
+          border-radius: 15px;
+          overflow: hidden;
+          position: relative;
+          background:
+            linear-gradient(90deg, #171717 0%, #292929 58%, #404040 100%);
           color: white;
           display: flex;
           align-items: center;
-          padding: 45px 55px;
-          overflow: hidden;
-          position: relative;
+          padding: 58px;
         }
 
         .hero-content {
-          max-width: 650px;
           position: relative;
           z-index: 2;
+          max-width: 690px;
         }
 
-        .hero-label {
-          display: inline-block;
-          background: rgba(255,255,255,.12);
-          border: 1px solid rgba(255,255,255,.2);
-          border-radius: 30px;
-          padding: 8px 14px;
-          font-size: 12px;
+        .hero-kicker {
+          font-size: 11px;
           font-weight: 800;
           text-transform: uppercase;
-          letter-spacing: 1px;
+          letter-spacing: 2px;
+          color: #d4d4d4;
         }
 
         .hero h1 {
-          margin: 18px 0 12px;
-          font-size: clamp(36px, 5vw, 62px);
-          line-height: .98;
-          letter-spacing: -3px;
+          margin: 13px 0 16px;
+          font-size: clamp(42px, 5vw, 68px);
+          line-height: .96;
+          letter-spacing: -4px;
         }
 
         .hero p {
-          color: #d1d5db;
-          max-width: 550px;
-          line-height: 1.6;
-          margin-bottom: 25px;
+          max-width: 570px;
+          color: #d1d1d1;
+          font-size: 16px;
+          line-height: 1.65;
+          margin: 0 0 28px;
         }
 
-        .hero-button {
+        .hero-action {
           border: 0;
-          border-radius: 7px;
           background: white;
-          color: #111827;
-          padding: 13px 21px;
-          font-weight: 800;
+          color: #111;
+          padding: 14px 22px;
+          border-radius: 7px;
+          font-weight: 900;
         }
 
-        .hero-decoration {
+        .hero-shape {
           position: absolute;
-          right: -80px;
-          width: 420px;
-          height: 420px;
+          width: 500px;
+          height: 500px;
+          right: -100px;
+          top: -55px;
           border-radius: 50%;
-          border: 80px solid rgba(255,255,255,.05);
+          border: 95px solid rgba(255,255,255,.055);
+        }
+
+        .hero-shape:after {
+          content: "";
+          position: absolute;
+          inset: 45px;
+          border-radius: 50%;
+          border: 1px solid rgba(255,255,255,.09);
         }
 
         .section {
-          margin-top: 36px;
+          margin-top: 42px;
         }
 
-        .section-heading {
+        .section-head {
           display: flex;
-          align-items: end;
+          align-items: flex-end;
           justify-content: space-between;
-          margin-bottom: 16px;
+          margin-bottom: 17px;
         }
 
-        .section-heading h2 {
+        .section-head h2 {
           margin: 0;
           font-size: 27px;
-          letter-spacing: -.8px;
+          letter-spacing: -1px;
         }
 
-        .section-heading p {
-          margin: 5px 0 0;
-          color: #6b7280;
-          font-size: 14px;
+        .section-head p {
+          margin: 6px 0 0;
+          color: #777;
+          font-size: 13px;
         }
 
-        .product-grid {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 17px;
-        }
-
-        .product-card {
-          background: white;
-          border: 1px solid #e5e7eb;
-          border-radius: 10px;
-          overflow: hidden;
-          transition: transform .18s, box-shadow .18s;
-        }
-
-        .product-card:hover {
-          transform: translateY(-3px);
-          box-shadow: 0 10px 30px rgba(0,0,0,.09);
-        }
-
-        .product-image-button {
+        .view-all {
           border: 0;
-          padding: 0;
+          background: transparent;
+          font-weight: 800;
+          font-size: 13px;
+        }
+
+        .products {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0,1fr));
+          gap: 18px;
+        }
+
+        .card {
+          background: white;
+          border: 1px solid #e5e5e5;
+          border-radius: 11px;
+          overflow: hidden;
+          transition: .2s ease;
+        }
+
+        .card:hover {
+          transform: translateY(-3px);
+          box-shadow: 0 14px 35px rgba(0,0,0,.08);
+        }
+
+        .photo-button {
+          display: block;
           width: 100%;
+          padding: 0;
+          border: 0;
           background: white;
           text-align: left;
         }
 
-        .image-wrap {
+        .photo {
+          position: relative;
           aspect-ratio: 1 / 1;
           overflow: hidden;
-          background: #f3f4f6;
+          background: #f1f1ef;
         }
 
-        .image-wrap img {
+        .photo img {
           width: 100%;
           height: 100%;
           object-fit: cover;
           display: block;
-          transition: transform .25s;
+          transition: transform .3s ease;
         }
 
-        .product-card:hover .image-wrap img {
-          transform: scale(1.04);
+        .card:hover .photo img {
+          transform: scale(1.035);
         }
 
-        .product-info {
-          padding: 15px;
-        }
-
-        .product-category {
-          color: #6b7280;
-          font-size: 11px;
-          font-weight: 800;
+        .badge {
+          position: absolute;
+          top: 12px;
+          left: 12px;
+          background: white;
+          border-radius: 5px;
+          padding: 6px 8px;
+          font-size: 10px;
+          font-weight: 900;
           text-transform: uppercase;
           letter-spacing: .7px;
+          box-shadow: 0 3px 10px rgba(0,0,0,.08);
         }
 
-        .product-name {
-          margin: 6px 0;
-          min-height: 40px;
+        .info {
+          padding: 16px 16px 10px;
+        }
+
+        .category {
+          color: #777;
+          font-size: 10px;
+          font-weight: 900;
+          letter-spacing: 1px;
+          text-transform: uppercase;
+        }
+
+        .name {
+          min-height: 42px;
+          margin: 7px 0;
           font-size: 15px;
-          line-height: 1.3;
-          font-weight: 700;
-          color: #111827;
+          line-height: 1.35;
+          font-weight: 750;
         }
 
         .rating {
+          color: #6d6d6d;
           font-size: 12px;
-          color: #6b7280;
         }
 
         .stars {
-          color: #111827;
+          color: #171717;
           letter-spacing: 1px;
         }
 
         .price-row {
           display: flex;
-          align-items: center;
+          align-items: baseline;
           gap: 8px;
           margin-top: 9px;
         }
@@ -525,389 +575,386 @@ export default function Home() {
         .price {
           font-size: 21px;
           font-weight: 900;
-          color: #111827;
         }
 
-        .old-price {
+        .old {
+          color: #999;
           font-size: 12px;
-          color: #9ca3af;
           text-decoration: line-through;
         }
 
-        .card-actions {
+        .actions {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 7px;
-          padding: 0 15px 15px;
+          gap: 8px;
+          padding: 6px 16px 16px;
         }
 
-        .add-button,
-        .buy-button {
-          min-height: 40px;
+        .actions button,
+        .detail-actions button {
+          height: 42px;
           border-radius: 6px;
           font-size: 12px;
-          font-weight: 800;
+          font-weight: 900;
         }
 
-        .add-button {
+        .add {
+          border: 1px solid #bdbdbd;
           background: white;
-          border: 1px solid #9ca3af;
-          color: #111827;
+          color: #111;
         }
 
-        .buy-button {
-          background: #111827;
-          border: 1px solid #111827;
+        .buy {
+          border: 1px solid #111;
+          background: #111;
           color: white;
         }
 
-        .add-button:hover {
-          background: #f3f4f6;
+        .add:hover {
+          background: #f2f2f2;
         }
 
-        .buy-button:hover {
-          background: #374151;
+        .buy:hover {
+          background: #333;
         }
 
-        .feature-strip {
+        .promo {
           display: grid;
-          grid-template-columns: repeat(4, 1fr);
+          grid-template-columns: repeat(3, 1fr);
+          gap: 1px;
+          margin-top: 42px;
+          background: #dedede;
+          border: 1px solid #dedede;
+          border-radius: 11px;
+          overflow: hidden;
+        }
+
+        .promo-item {
           background: white;
-          border: 1px solid #e5e7eb;
-          border-radius: 10px;
-          margin-top: 36px;
+          padding: 25px;
         }
 
-        .feature {
-          padding: 21px;
-          border-right: 1px solid #e5e7eb;
-        }
-
-        .feature:last-child {
-          border-right: 0;
-        }
-
-        .feature strong {
-          display: block;
+        .promo-title {
+          font-weight: 900;
           font-size: 14px;
-          margin-bottom: 5px;
         }
 
-        .feature span {
-          color: #6b7280;
+        .promo-text {
+          margin-top: 6px;
+          color: #777;
           font-size: 12px;
+          line-height: 1.5;
         }
 
-        .product-detail {
+        .detail {
           background: white;
-          border: 1px solid #e5e7eb;
+          border: 1px solid #e3e3e3;
           border-radius: 12px;
           overflow: hidden;
         }
 
-        .back-button {
+        .back {
           border: 0;
           background: transparent;
           padding: 0;
           margin-bottom: 17px;
-          font-weight: 700;
-          color: #4b5563;
+          font-size: 13px;
+          font-weight: 800;
         }
 
         .detail-grid {
           display: grid;
-          grid-template-columns: 1.05fr .95fr;
+          grid-template-columns: 1fr 1fr;
         }
 
-        .detail-image {
-          background: #f3f4f6;
-          min-height: 600px;
+        .detail-photo {
+          min-height: 650px;
+          background: #f0f0ee;
         }
 
-        .detail-image img {
+        .detail-photo img {
           width: 100%;
           height: 100%;
-          min-height: 600px;
+          min-height: 650px;
           object-fit: cover;
         }
 
-        .detail-content {
-          padding: 50px;
+        .detail-info {
+          padding: 65px;
         }
 
-        .detail-content h1 {
-          font-size: 40px;
-          line-height: 1.08;
-          letter-spacing: -1.5px;
-          margin: 10px 0;
+        .detail-info h1 {
+          margin: 11px 0 12px;
+          font-size: 42px;
+          line-height: 1.05;
+          letter-spacing: -2px;
         }
 
         .detail-price {
-          font-size: 34px;
+          margin: 27px 0;
+          font-size: 36px;
           font-weight: 900;
-          margin: 22px 0;
         }
 
-        .detail-description {
-          color: #4b5563;
+        .description {
+          padding: 24px 0;
+          border-top: 1px solid #e5e5e5;
+          border-bottom: 1px solid #e5e5e5;
+          color: #555;
           line-height: 1.7;
-          margin: 25px 0;
+          font-size: 14px;
         }
 
         .detail-actions {
           display: grid;
           grid-template-columns: 1fr 1fr;
           gap: 10px;
+          margin-top: 25px;
         }
 
         .detail-actions button {
-          min-height: 52px;
-          border-radius: 7px;
-          font-weight: 900;
+          height: 52px;
         }
 
-        .cart-panel {
+        .cart-page {
           background: white;
-          border: 1px solid #e5e7eb;
+          border: 1px solid #e4e4e4;
           border-radius: 12px;
           padding: 30px;
+        }
+
+        .cart-page h1 {
+          margin: 0 0 5px;
+          font-size: 31px;
+          letter-spacing: -1px;
         }
 
         .cart-item {
           display: flex;
           gap: 17px;
-          padding: 17px 0;
-          border-bottom: 1px solid #e5e7eb;
+          padding: 20px 0;
+          border-bottom: 1px solid #e7e7e7;
         }
 
         .cart-item img {
-          width: 100px;
-          height: 100px;
-          border-radius: 7px;
+          width: 110px;
+          height: 110px;
           object-fit: cover;
+          border-radius: 7px;
         }
 
-        .cart-item-info {
+        .cart-item-main {
           flex: 1;
         }
 
         .quantity {
           display: inline-flex;
           align-items: center;
-          gap: 13px;
+          gap: 12px;
           margin-top: 12px;
         }
 
         .quantity button {
           width: 30px;
           height: 30px;
-          border: 1px solid #d1d5db;
+          border: 1px solid #d2d2d2;
           background: white;
           border-radius: 5px;
           font-weight: 900;
         }
 
         .remove {
-          border: 0;
-          background: transparent;
-          color: #6b7280;
-          font-size: 12px;
-          margin-left: 12px;
+          border: 0 !important;
+          width: auto !important;
+          background: transparent !important;
+          color: #777;
+          margin-left: 7px;
         }
 
-        .cart-summary {
-          margin-top: 25px;
-          margin-left: auto;
+        .summary {
           max-width: 400px;
+          margin: 25px 0 0 auto;
         }
 
         .checkout {
           width: 100%;
+          height: 50px;
+          margin-top: 14px;
           border: 0;
-          background: #111827;
+          border-radius: 6px;
+          background: #111;
           color: white;
-          padding: 15px;
-          border-radius: 7px;
-          margin-top: 15px;
           font-weight: 900;
         }
 
         .empty {
-          text-align: center;
           padding: 80px 20px;
-          color: #6b7280;
+          text-align: center;
+          color: #777;
         }
 
         .empty h2 {
-          color: #111827;
+          color: #111;
         }
 
-        .footer {
-          background: #111827;
+        footer {
+          margin-top: 65px;
+          background: #171717;
           color: white;
-          margin-top: 60px;
-          padding: 45px 24px;
+          padding: 50px 28px;
         }
 
         .footer-inner {
-          max-width: 1400px;
+          max-width: 1440px;
           margin: auto;
           display: flex;
           justify-content: space-between;
           gap: 30px;
         }
 
-        .footer p {
-          color: #9ca3af;
-          max-width: 450px;
+        .footer-copy {
+          max-width: 500px;
+          color: #aaa;
           line-height: 1.6;
+          font-size: 13px;
         }
 
-        @media (max-width: 1000px) {
-          .product-grid {
-            grid-template-columns: repeat(3, 1fr);
+        @media (max-width: 1100px) {
+          .header-links .header-link {
+            display: none;
           }
 
-          .feature-strip {
-            grid-template-columns: repeat(2, 1fr);
+          .products {
+            grid-template-columns: repeat(3, minmax(0,1fr));
+          }
+        }
+
+        @media (max-width: 760px) {
+          .header-main {
+            padding: 14px 16px;
+            flex-wrap: wrap;
+            gap: 12px;
           }
 
-          .feature:nth-child(2) {
-            border-right: 0;
+          .brand {
+            min-width: 120px;
           }
 
-          .feature:nth-child(-n+2) {
-            border-bottom: 1px solid #e5e7eb;
+          .brand-name {
+            font-size: 27px;
+          }
+
+          .search {
+            order: 3;
+            flex-basis: 100%;
+            max-width: none;
+          }
+
+          .container {
+            padding: 15px;
+          }
+
+          .hero {
+            min-height: 330px;
+            padding: 35px 25px;
+          }
+
+          .hero h1 {
+            font-size: 43px;
+            letter-spacing: -2.5px;
+          }
+
+          .hero-shape {
+            opacity: .5;
+          }
+
+          .products {
+            grid-template-columns: repeat(2, minmax(0,1fr));
+            gap: 10px;
+          }
+
+          .info {
+            padding: 12px 11px 7px;
+          }
+
+          .actions {
+            padding: 5px 11px 11px;
+            gap: 5px;
+          }
+
+          .promo {
+            grid-template-columns: 1fr;
           }
 
           .detail-grid {
             grid-template-columns: 1fr;
           }
-        }
 
-        @media (max-width: 700px) {
-          .topbar {
-            flex-wrap: wrap;
-            gap: 10px;
+          .detail-photo,
+          .detail-photo img {
+            min-height: 380px;
           }
 
-          .logo {
-            font-size: 26px;
+          .detail-info {
+            padding: 28px;
           }
 
-          .header-action {
-            display: none;
+          .detail-info h1 {
+            font-size: 31px;
           }
 
-          .search-box {
-            order: 3;
-            flex-basis: 100%;
-          }
-
-          .page {
-            padding: 14px;
-          }
-
-          .hero {
-            padding: 30px 24px;
-            min-height: 290px;
-          }
-
-          .hero h1 {
-            font-size: 39px;
-          }
-
-          .product-grid {
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-          }
-
-          .product-info {
-            padding: 11px;
-          }
-
-          .card-actions {
-            padding: 0 11px 11px;
-          }
-
-          .feature-strip {
-            grid-template-columns: 1fr;
-          }
-
-          .feature {
-            border-right: 0 !important;
-            border-bottom: 1px solid #e5e7eb;
-          }
-
-          .feature:last-child {
-            border-bottom: 0;
-          }
-
-          .detail-content {
-            padding: 25px;
-          }
-
-          .detail-content h1 {
-            font-size: 30px;
-          }
-
-          .detail-image,
-          .detail-image img {
-            min-height: 350px;
-          }
-
-          .cart-panel {
+          .cart-page {
             padding: 18px;
           }
         }
       `}</style>
 
-      <header className="marlow-header">
-        <div className="topbar">
-          <button className="logo" onClick={goHome}>
-            Marlow
-            <div className="tagline">Shop smarter.</div>
+      <header className="header">
+        <div className="header-main">
+          <button className="brand" onClick={showHome}>
+            <span className="brand-name">Marlow</span>
+            <span className="brand-sub">Shop smarter</span>
           </button>
 
-          <div className="search-box">
+          <div className="search">
             <input
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
-                setSelectedProduct(null);
+                setProduct(null);
                 setCartOpen(false);
               }}
-              placeholder="What are you looking for today?"
+              placeholder="Search products, brands and more..."
             />
-            <button className="search-button">⌕</button>
+            <button aria-label="Search">⌕</button>
           </div>
 
-          <button className="header-action">Account</button>
+          <div className="header-links">
+            <button className="header-link">Account</button>
+            <button className="header-link">Orders</button>
 
-          <button
-            className="cart-button"
-            onClick={() => {
-              setCartOpen(true);
-              setSelectedProduct(null);
-            }}
-          >
-            🛒 Cart
-            <span className="cart-count">{cartCount}</span>
-          </button>
+            <button
+              className="cart"
+              onClick={() => {
+                setCartOpen(true);
+                setProduct(null);
+              }}
+            >
+              Cart <span>{cartCount}</span>
+            </button>
+          </div>
         </div>
 
-        <nav className="category-bar">
-          <div className="category-inner">
+        <nav className="nav">
+          <div className="nav-inner">
             {categories.map((item) => (
               <button
                 key={item}
-                className={`category ${
-                  category === item ? "active" : ""
-                }`}
+                className={category === item ? "active" : ""}
                 onClick={() => {
                   setCategory(item);
                   setSearch("");
-                  setSelectedProduct(null);
+                  setProduct(null);
                   setCartOpen(false);
                 }}
               >
@@ -918,111 +965,126 @@ export default function Home() {
         </nav>
       </header>
 
-      <main className="page">
-        {!selectedProduct && !cartOpen && (
+      <main className="container">
+        {!product && !cartOpen && (
           <>
             {!search && category === "All" && (
               <section className="hero">
                 <div className="hero-content">
-                  <span className="hero-label">Welcome to Marlow</span>
-                  <h1>Everything you're looking for, all in one place.</h1>
+                  <div className="hero-kicker">
+                    Welcome to Marlow
+                  </div>
+
+                  <h1>
+                    Shopping made
+                    <br />
+                    beautifully simple.
+                  </h1>
+
                   <p>
-                    Discover products across the categories you shop most.
-                    Search for what you need or explore our recommendations.
+                    Discover products you'll love, find what you're looking
+                    for, and shop everything from one place.
                   </p>
+
                   <button
-                    className="hero-button"
+                    className="hero-action"
                     onClick={() =>
                       document
                         .getElementById("recommended")
                         ?.scrollIntoView({ behavior: "smooth" })
                     }
                   >
-                    Shop Recommended
+                    Explore Products
                   </button>
                 </div>
-                <div className="hero-decoration" />
+
+                <div className="hero-shape" />
               </section>
             )}
 
             <section className="section" id="recommended">
-              <div className="section-heading">
+              <div className="section-head">
                 <div>
                   <h2>
                     {search
-                      ? `Results for "${search}"`
+                      ? `Search results for "${search}"`
                       : category !== "All"
                       ? category
                       : "Recommended for You"}
                   </h2>
+
                   <p>
                     {search
                       ? "Products matching your search"
-                      : "Popular picks selected for Marlow shoppers"}
+                      : "Popular products selected for Marlow shoppers"}
                   </p>
                 </div>
-                <span style={{ color: "#6b7280", fontSize: 13 }}>
-                  {filteredProducts.length} products
-                </span>
+
+                <button className="view-all">
+                  {filtered.length} products
+                </button>
               </div>
 
-              {filteredProducts.length === 0 ? (
+              {filtered.length === 0 ? (
                 <div className="empty">
-                  <h2>We couldn't find that product.</h2>
+                  <h2>We couldn't find that item.</h2>
                   <p>
-                    Try another search. Our future supplier-search system will
-                    be able to look through connected product sources when an
-                    item isn't already in Marlow's catalog.
+                    Marlow's supplier-search system will be connected here so
+                    searches can look through authorized supplier catalogs
+                    instead of being limited to this temporary catalog.
                   </p>
                 </div>
               ) : (
-                <div className="product-grid">
-                  {filteredProducts.map((product) => (
-                    <article className="product-card" key={product.id}>
+                <div className="products">
+                  {filtered.map((item) => (
+                    <article className="card" key={item.id}>
                       <button
-                        className="product-image-button"
-                        onClick={() => openProduct(product)}
+                        className="photo-button"
+                        onClick={() => {
+                          setProduct(item);
+                          window.scrollTo({ top: 0 });
+                        }}
                       >
-                        <div className="image-wrap">
-                          <img src={product.image} alt={product.name} />
+                        <div className="photo">
+                          <img src={item.image} alt={item.name} />
+                          <span className="badge">{item.badge}</span>
                         </div>
 
-                        <div className="product-info">
-                          <div className="product-category">
-                            {product.category}
+                        <div className="info">
+                          <div className="category">
+                            {item.category}
                           </div>
 
-                          <div className="product-name">
-                            {product.name}
-                          </div>
+                          <div className="name">{item.name}</div>
 
                           <div className="rating">
                             <span className="stars">★★★★★</span>{" "}
-                            {product.rating} ({product.reviews.toLocaleString()})
+                            {item.rating} ({item.reviews.toLocaleString()})
                           </div>
 
                           <div className="price-row">
                             <span className="price">
-                              ${product.price.toFixed(2)}
+                              ${item.price.toFixed(2)}
                             </span>
-                            <span className="old-price">
-                              ${product.oldPrice.toFixed(2)}
+
+                            <span className="old">
+                              ${item.oldPrice.toFixed(2)}
                             </span>
                           </div>
                         </div>
                       </button>
 
-                      <div className="card-actions">
+                      <div className="actions">
                         <button
-                          className="add-button"
-                          onClick={() => addToCart(product)}
+                          className="add"
+                          onClick={() => addToCart(item)}
                         >
                           Add to Cart
                         </button>
 
                         <button
-                          className="buy-button"
-                          onClick={() => buyNow(product)}
+                          className="buy"
+                          onClick={() => buyNow(item)}
                         >
                           Buy Now
                         </button>
@@ -1034,86 +1096,148 @@ export default function Home() {
             </section>
 
             {!search && category === "All" && (
-              <section className="feature-strip">
-                <div className="feature">
-                  <strong>Thousands of products</strong>
-                  <span>Built to grow into a massive catalog.</span>
-                </div>
-                <div className="feature">
-                  <strong>Easy shopping</strong>
-                  <span>Search, compare, and find what you need.</span>
-                </div>
-                <div className="feature">
-                  <strong>Product details</strong>
-                  <span>Open products to see complete information.</span>
-                </div>
-                <div className="feature">
-                  <strong>Simple checkout</strong>
-                  <span>Add products or use Buy Now.</span>
-                </div>
-              </section>
+              <>
+                <section className="section">
+                  <div className="section-head">
+                    <div>
+                      <h2>Trending Now</h2>
+                      <p>Popular picks shoppers are checking out</p>
+                    </div>
+                  </div>
+
+                  <div className="products">
+                    {products.slice(4, 8).map((item) => (
+                      <article className="card" key={item.id}>
+                        <button
+                          className="photo-button"
+                          onClick={() => {
+                            setProduct(item);
+                            window.scrollTo({ top: 0 });
+                          }}
+                        >
+                          <div className="photo">
+                            <img src={item.image} alt={item.name} />
+                            <span className="badge">{item.badge}</span>
+                          </div>
+
+                          <div className="info">
+                            <div className="category">
+                              {item.category}
+                            </div>
+
+                            <div className="name">{item.name}</div>
+
+                            <div className="rating">
+                              <span className="stars">★★★★★</span>{" "}
+                              {item.rating} ({item.reviews.toLocaleString()})
+                            </div>
+
+                            <div className="price-row">
+                              <span className="price">
+                                ${item.price.toFixed(2)}
+                              </span>
+
+                              <span className="old">
+                                ${item.oldPrice.toFixed(2)}
+                              </span>
+                            </div>
+                          </div>
+                        </button>
+
+                        <div className="actions">
+                          <button
+                            className="add"
+                            onClick={() => addToCart(item)}
+                          >
+                            Add to Cart
+                          </button>
+
+                          <button
+                            className="buy"
+                            onClick={() => buyNow(item)}
+                          >
+                            Buy Now
+                          </button>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="promo">
+                  <div className="promo-item">
+                    <div className="promo-title">A growing marketplace</div>
+                    <div className="promo-text">
+                      Built to expand into a massive product catalog.
+                    </div>
+                  </div>
+
+                  <div className="promo-item">
+                    <div className="promo-title">Easy product discovery</div>
+                    <div className="promo-text">
+                      Search, explore recommendations, and open products for
+                      more information.
+                    </div>
+                  </div>
+
+                  <div className="promo-item">
+                    <div className="promo-title">Simple shopping</div>
+                    <div className="promo-text">
+                      Add products to your cart or choose Buy Now.
+                    </div>
+                  </div>
+                </section>
+              </>
             )}
           </>
         )}
 
-        {selectedProduct && (
+        {product && (
           <>
             <button
-              className="back-button"
-              onClick={() => setSelectedProduct(null)}
+              className="back"
+              onClick={() => setProduct(null)}
             >
               ← Back to shopping
             </button>
 
-            <section className="product-detail">
+            <section className="detail">
               <div className="detail-grid">
-                <div className="detail-image">
-                  <img
-                    src={selectedProduct.image}
-                    alt={selectedProduct.name}
-                  />
+                <div className="detail-photo">
+                  <img src={product.image} alt={product.name} />
                 </div>
 
-                <div className="detail-content">
-                  <div className="product-category">
-                    {selectedProduct.category}
-                  </div>
+                <div className="detail-info">
+                  <div className="category">{product.category}</div>
 
-                  <h1>{selectedProduct.name}</h1>
+                  <h1>{product.name}</h1>
 
                   <div className="rating">
                     <span className="stars">★★★★★</span>{" "}
-                    {selectedProduct.rating} ·{" "}
-                    {selectedProduct.reviews.toLocaleString()} reviews
+                    {product.rating} ·{" "}
+                    {product.reviews.toLocaleString()} reviews
                   </div>
 
                   <div className="detail-price">
-                    ${selectedProduct.price.toFixed(2)}
+                    ${product.price.toFixed(2)}
                   </div>
 
-                  <div
-                    style={{
-                      borderTop: "1px solid #e5e7eb",
-                      paddingTop: 22,
-                    }}
-                  >
-                    <strong>Product Information</strong>
-                    <p className="detail-description">
-                      {selectedProduct.description}
-                    </p>
+                  <div className="description">
+                    <strong>Product information</strong>
+                    <p>{product.description}</p>
                   </div>
 
                   <div className="detail-actions">
                     <button
-                      className="add-button"
-                      onClick={() => addToCart(selectedProduct)}
+                      className="add"
+                      onClick={() => addToCart(product)}
                     >
                       Add to Cart
                     </button>
 
                     <button
-                      className="buy-button"
-                      onClick={() => buyNow(selectedProduct)}
+                      className="buy"
+                      onClick={() => buyNow(product)}
                     >
                       Buy Now
                     </button>
@@ -1127,27 +1251,23 @@ export default function Home() {
         {cartOpen && (
           <>
             <button
-              className="back-button"
+              className="back"
               onClick={() => setCartOpen(false)}
             >
               ← Continue Shopping
             </button>
 
-            <section className="cart-panel">
-              <div className="section-heading">
-                <div>
-                  <h2>Your Cart</h2>
-                  <p>
-                    {cartCount} {cartCount === 1 ? "item" : "items"} in your
-                    cart
-                  </p>
-                </div>
-              </div>
+            <section className="cart-page">
+              <h1>Your Cart</h1>
+
+              <p style={{ color: "#777", marginTop: 5 }}>
+                {cartCount} {cartCount === 1 ? "item" : "items"}
+              </p>
 
               {cart.length === 0 ? (
                 <div className="empty">
                   <h2>Your cart is empty.</h2>
-                  <p>Add products to your cart and they'll appear here.</p>
+                  <p>Add something you love and it'll appear here.</p>
                 </div>
               ) : (
                 <>
@@ -1155,9 +1275,15 @@ export default function Home() {
                     <div className="cart-item" key={item.id}>
                       <img src={item.image} alt={item.name} />
 
-                      <div className="cart-item-info">
+                      <div className="cart-item-main">
                         <strong>{item.name}</strong>
-                        <p style={{ color: "#6b7280", fontSize: 13 }}>
+
+                        <p
+                          style={{
+                            color: "#777",
+                            fontSize: 13,
+                          }}
+                        >
                           {item.category}
                         </p>
 
@@ -1165,7 +1291,9 @@ export default function Home() {
 
                         <div className="quantity">
                           <button
-                            onClick={() => changeQuantity(item.id, -1)}
+                            onClick={() =>
+                              updateQuantity(item.id, -1)
+                            }
                           >
                             −
                           </button>
@@ -1173,14 +1301,18 @@ export default function Home() {
                           <strong>{item.quantity}</strong>
 
                           <button
-                            onClick={() => changeQuantity(item.id, 1)}
+                            onClick={() =>
+                              updateQuantity(item.id, 1)
+                            }
                           >
                             +
                           </button>
 
                           <button
                             className="remove"
-                            onClick={() => removeFromCart(item.id)}
+                            onClick={() =>
+                              updateQuantity(item.id, -item.quantity)
+                            }
                           >
                             Remove
                           </button>
@@ -1193,7 +1325,7 @@ export default function Home() {
                     </div>
                   ))}
 
-                  <div className="cart-summary">
+                  <div className="summary">
                     <div
                       style={{
                         display: "flex",
@@ -1209,7 +1341,7 @@ export default function Home() {
                       className="checkout"
                       onClick={() =>
                         alert(
-                          "Checkout will be connected when Marlow's payment and order system is added."
+                          "Marlow checkout will be connected after the catalog and payment system are added."
                         )
                       }
                     >
@@ -1223,18 +1355,27 @@ export default function Home() {
         )}
       </main>
 
-      <footer className="footer">
+      <footer>
         <div className="footer-inner">
           <div>
-            <strong style={{ fontSize: 26 }}>Marlow</strong>
-            <p>
-              Shop smarter. Marlow is being built to become a large,
-              easy-to-use online shopping destination.
-            </p>
+            <div style={{ fontSize: 27, fontWeight: 900 }}>
+              Marlow
+            </div>
+
+            <div className="footer-copy">
+              A modern shopping destination being built to make product
+              discovery simple, convenient, and personal.
+            </div>
           </div>
 
-          <div style={{ color: "#9ca3af", fontSize: 13 }}>
-            © 2026 Marlow. All rights reserved.
+          <div
+            style={{
+              color: "#888",
+              fontSize: 12,
+              alignSelf: "end",
+            }}
+          >
+            © 2026 Marlow
           </div>
         </div>
       </footer>
