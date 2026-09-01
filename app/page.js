@@ -5,107 +5,135 @@ import { useMemo, useState } from "react";
 const products = [
   {
     id: 1,
-    name: "Marlow Everyday Backpack",
-    category: "Travel",
+    name: "Wireless Bluetooth Headphones",
     price: 39.99,
-    rating: 4.8,
-    emoji: "🎒",
+    category: "Electronics",
+    image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80",
+    description:
+      "Comfortable wireless headphones with clear sound, cushioned ear cups, and a rechargeable battery.",
   },
   {
     id: 2,
-    name: "Wireless Bluetooth Earbuds",
+    name: "Smart Watch",
+    price: 49.99,
     category: "Electronics",
-    price: 29.99,
-    rating: 4.7,
-    emoji: "🎧",
+    image: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80",
+    description:
+      "A modern smartwatch designed for everyday use with activity tracking and convenient notifications.",
   },
   {
     id: 3,
-    name: "Portable LED Desk Lamp",
-    category: "Home",
+    name: "Stainless Steel Water Bottle",
     price: 24.99,
-    rating: 4.6,
-    emoji: "💡",
+    category: "Home",
+    image: "https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&w=800&q=80",
+    description:
+      "Reusable stainless steel bottle designed to keep drinks cold or hot while you're on the go.",
   },
   {
     id: 4,
-    name: "Stainless Steel Water Bottle",
-    category: "Lifestyle",
-    price: 19.99,
-    rating: 4.9,
-    emoji: "🥤",
+    name: "Portable Bluetooth Speaker",
+    price: 34.99,
+    category: "Electronics",
+    image: "https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?auto=format&fit=crop&w=800&q=80",
+    description:
+      "Compact portable speaker with wireless connectivity and powerful sound for home or travel.",
   },
   {
     id: 5,
-    name: "Smart Fitness Watch",
-    category: "Electronics",
-    price: 59.99,
-    rating: 4.5,
-    emoji: "⌚",
+    name: "LED Desk Lamp",
+    price: 29.99,
+    category: "Home",
+    image: "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=800&q=80",
+    description:
+      "Modern LED desk lamp providing adjustable lighting for work, reading, or studying.",
   },
   {
     id: 6,
-    name: "Cozy Throw Blanket",
-    category: "Home",
-    price: 34.99,
-    rating: 4.8,
-    emoji: "🧺",
+    name: "Kitchen Organizer Set",
+    price: 27.99,
+    category: "Kitchen",
+    image: "https://images.unsplash.com/photo-1556911220-bff31c812dba?auto=format&fit=crop&w=800&q=80",
+    description:
+      "Useful kitchen organization pieces designed to help keep counters, cabinets, and drawers organized.",
   },
   {
     id: 7,
-    name: "Travel Organizer Set",
+    name: "Everyday Backpack",
+    price: 44.99,
     category: "Travel",
-    price: 22.99,
-    rating: 4.7,
-    emoji: "🧳",
+    image: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=800&q=80",
+    description:
+      "Durable everyday backpack with room for personal items, electronics, school supplies, or travel gear.",
   },
   {
     id: 8,
-    name: "Everyday Phone Stand",
-    category: "Accessories",
-    price: 14.99,
-    rating: 4.6,
-    emoji: "📱",
+    name: "Soft Throw Blanket",
+    price: 32.99,
+    category: "Home",
+    image: "https://images.unsplash.com/photo-1584100936595-c0654b55a2e2?auto=format&fit=crop&w=800&q=80",
+    description:
+      "Soft decorative throw blanket made for relaxing on the couch, bed, or favorite chair.",
   },
 ];
 
-const languages = [
-  "English",
-  "Español",
-  "Français",
-  "Deutsch",
-  "Italiano",
-  "Português",
-  "中文",
-  "日本語",
-  "한국어",
-  "العربية",
-];
-
 export default function Home() {
-  const [category, setCategory] = useState("All");
   const [search, setSearch] = useState("");
+  const [selectedProduct, setSelectedProduct] = useState(null);
   const [cart, setCart] = useState([]);
-  const [accountOpen, setAccountOpen] = useState(false);
-  const [assistantOpen, setAssistantOpen] = useState(false);
-  const [supportOpen, setSupportOpen] = useState(false);
-  const [language, setLanguage] = useState("English");
-  const [notice, setNotice] = useState("");
-
-  const categories = ["All", "Electronics", "Home", "Travel", "Lifestyle", "Accessories"];
+  const [showCart, setShowCart] = useState(false);
 
   const filteredProducts = useMemo(() => {
-    return products.filter((product) => {
-      const matchesCategory =
-        category === "All" || product.category === category;
+    const term = search.trim().toLowerCase();
 
-      const matchesSearch =
-        product.name.toLowerCase().includes(search.toLowerCase()) ||
-        product.category.toLowerCase().includes(search.toLowerCase());
+    if (!term) return products;
 
-      return matchesCategory && matchesSearch;
+    return products.filter(
+      (product) =>
+        product.name.toLowerCase().includes(term) ||
+        product.category.toLowerCase().includes(term) ||
+        product.description.toLowerCase().includes(term)
+    );
+  }, [search]);
+
+  function addToCart(product) {
+    setCart((currentCart) => {
+      const existing = currentCart.find((item) => item.id === product.id);
+
+      if (existing) {
+        return currentCart.map((item) =>
+          item.id === product.id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        );
+      }
+
+      return [...currentCart, { ...product, quantity: 1 }];
     });
-  }, [category, search]);
+  }
+
+  function buyNow(product) {
+    addToCart(product);
+    setShowCart(true);
+  }
+
+  function removeFromCart(productId) {
+    setCart((currentCart) =>
+      currentCart.filter((item) => item.id !== productId)
+    );
+  }
+
+  function changeQuantity(productId, amount) {
+    setCart((currentCart) =>
+      currentCart
+        .map((item) =>
+          item.id === productId
+            ? { ...item, quantity: Math.max(1, item.quantity + amount) }
+            : item
+        )
+        .filter((item) => item.quantity > 0)
+    );
+  }
 
   const cartCount = cart.reduce((total, item) => total + item.quantity, 0);
 
@@ -114,962 +142,327 @@ export default function Home() {
     0
   );
 
-  function addToCart(product) {
-    setCart((current) => {
-      const existing = current.find((item) => item.id === product.id);
-
-      if (existing) {
-        return current.map((item) =>
-          item.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        );
-      }
-
-      return [...current, { ...product, quantity: 1 }];
-    });
-
-    setNotice(`${product.name} added to your cart.`);
-    setTimeout(() => setNotice(""), 2500);
-  }
-
-  function showComingSoon(message) {
-    setNotice(message);
-    setTimeout(() => setNotice(""), 3000);
-  }
-
   return (
-    <main className="site">
-      <style jsx global>{`
-        * {
-          box-sizing: border-box;
-        }
-
-        body {
-          margin: 0;
-          font-family:
-            Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-            "Segoe UI", sans-serif;
-          background: #f7f8fa;
-          color: #14171c;
-        }
-
-        button,
-        input,
-        select {
-          font: inherit;
-        }
-
-        button {
-          cursor: pointer;
-        }
-
-        .site {
-          min-height: 100vh;
-        }
-
-        .topbar {
-          background: #111827;
-          color: white;
-          text-align: center;
-          padding: 9px 16px;
-          font-size: 13px;
-        }
-
-        .header {
-          background: white;
-          border-bottom: 1px solid #e5e7eb;
-          position: sticky;
-          top: 0;
-          z-index: 20;
-        }
-
-        .headerInner {
-          max-width: 1200px;
-          margin: auto;
-          padding: 17px 22px;
-          display: flex;
-          align-items: center;
-          gap: 22px;
-        }
-
-        .logo {
-          border: 0;
-          background: transparent;
-          font-size: 27px;
-          font-weight: 900;
-          letter-spacing: -1px;
-          color: #111827;
-          padding: 0;
-        }
-
-        .search {
-          flex: 1;
-          position: relative;
-        }
-
-        .search input {
-          width: 100%;
-          border: 1px solid #d1d5db;
-          border-radius: 999px;
-          padding: 13px 18px;
-          outline: none;
-          background: #f9fafb;
-        }
-
-        .search input:focus {
-          border-color: #111827;
-          background: white;
-        }
-
-        .headerActions {
-          display: flex;
-          gap: 9px;
-          align-items: center;
-        }
-
-        .iconButton {
-          border: 1px solid #e5e7eb;
-          background: white;
-          border-radius: 12px;
-          padding: 10px 12px;
-          font-weight: 700;
-        }
-
-        .cartButton {
-          position: relative;
-        }
-
-        .badge {
-          position: absolute;
-          top: -7px;
-          right: -6px;
-          background: #dc2626;
-          color: white;
-          min-width: 20px;
-          height: 20px;
-          border-radius: 999px;
-          font-size: 11px;
-          display: grid;
-          place-items: center;
-          border: 2px solid white;
-        }
-
-        .nav {
-          background: white;
-          border-bottom: 1px solid #e5e7eb;
-        }
-
-        .navInner {
-          max-width: 1200px;
-          margin: auto;
-          padding: 0 22px;
-          display: flex;
-          gap: 8px;
-          overflow-x: auto;
-        }
-
-        .nav button {
-          border: 0;
-          background: transparent;
-          padding: 13px 15px;
-          color: #4b5563;
-          white-space: nowrap;
-        }
-
-        .nav button.active {
-          color: #111827;
-          font-weight: 800;
-          border-bottom: 2px solid #111827;
-        }
-
-        .hero {
-          max-width: 1200px;
-          margin: 28px auto 0;
-          padding: 0 22px;
-        }
-
-        .heroCard {
-          border-radius: 26px;
-          background: linear-gradient(135deg, #111827, #374151);
-          color: white;
-          padding: 55px;
-          min-height: 350px;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 30px;
-          overflow: hidden;
-        }
-
-        .heroText {
-          max-width: 620px;
-        }
-
-        .eyebrow {
-          text-transform: uppercase;
-          letter-spacing: 2px;
-          font-size: 12px;
-          font-weight: 800;
-          opacity: 0.75;
-        }
-
-        .hero h1 {
-          font-size: clamp(40px, 6vw, 68px);
-          line-height: 0.98;
-          letter-spacing: -3px;
-          margin: 14px 0 20px;
-        }
-
-        .hero p {
-          font-size: 18px;
-          line-height: 1.6;
-          color: #e5e7eb;
-          margin-bottom: 26px;
-        }
-
-        .primary {
-          border: 0;
-          border-radius: 12px;
-          background: white;
-          color: #111827;
-          padding: 13px 19px;
-          font-weight: 800;
-        }
-
-        .heroVisual {
-          font-size: 150px;
-          filter: drop-shadow(0 25px 30px rgba(0, 0, 0, 0.25));
-        }
-
-        .section {
-          max-width: 1200px;
-          margin: 42px auto;
-          padding: 0 22px;
-        }
-
-        .sectionHeader {
-          display: flex;
-          align-items: end;
-          justify-content: space-between;
-          gap: 20px;
-          margin-bottom: 18px;
-        }
-
-        .section h2 {
-          font-size: 28px;
-          margin: 0;
-          letter-spacing: -1px;
-        }
-
-        .muted {
-          color: #6b7280;
-        }
-
-        .products {
-          display: grid;
-          grid-template-columns: repeat(4, minmax(0, 1fr));
-          gap: 18px;
-        }
-
-        .product {
-          background: white;
-          border: 1px solid #e5e7eb;
-          border-radius: 18px;
-          overflow: hidden;
-          transition: transform 0.15s ease, box-shadow 0.15s ease;
-        }
-
-        .product:hover {
-          transform: translateY(-3px);
-          box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
-        }
-
-        .productImage {
-          min-height: 190px;
-          display: grid;
-          place-items: center;
-          background: #f3f4f6;
-          font-size: 76px;
-        }
-
-        .productBody {
-          padding: 16px;
-        }
-
-        .productCategory {
-          color: #6b7280;
-          font-size: 12px;
-          font-weight: 700;
-          text-transform: uppercase;
-        }
-
-        .product h3 {
-          font-size: 16px;
-          min-height: 44px;
-          margin: 8px 0;
-        }
-
-        .rating {
-          font-size: 13px;
-          margin-bottom: 13px;
-        }
-
-        .priceRow {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 10px;
-        }
-
-        .price {
-          font-weight: 900;
-          font-size: 19px;
-        }
-
-        .addButton {
-          border: 0;
-          border-radius: 10px;
-          background: #111827;
-          color: white;
-          padding: 10px 12px;
-          font-weight: 800;
-        }
-
-        .features {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 14px;
-        }
-
-        .feature {
-          background: white;
-          border: 1px solid #e5e7eb;
-          padding: 22px;
-          border-radius: 16px;
-        }
-
-        .feature strong {
-          display: block;
-          margin-bottom: 7px;
-        }
-
-        .footer {
-          background: #111827;
-          color: white;
-          margin-top: 60px;
-          padding: 45px 22px;
-        }
-
-        .footerInner {
-          max-width: 1200px;
-          margin: auto;
-          display: grid;
-          grid-template-columns: 2fr repeat(3, 1fr);
-          gap: 35px;
-        }
-
-        .footer h3 {
-          margin-top: 0;
-        }
-
-        .footer button {
-          display: block;
-          border: 0;
-          background: transparent;
-          color: #d1d5db;
-          padding: 6px 0;
-          text-align: left;
-        }
-
-        .modalBackdrop {
-          position: fixed;
-          inset: 0;
-          background: rgba(0, 0, 0, 0.5);
-          display: grid;
-          place-items: center;
-          z-index: 100;
-          padding: 20px;
-        }
-
-        .modal {
-          width: min(470px, 100%);
-          background: white;
-          border-radius: 20px;
-          padding: 25px;
-          box-shadow: 0 25px 70px rgba(0, 0, 0, 0.25);
-        }
-
-        .modalHeader {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 15px;
-        }
-
-        .close {
-          border: 0;
-          background: #f3f4f6;
-          border-radius: 10px;
-          padding: 8px 11px;
-        }
-
-        .formInput,
-        .formSelect,
-        .formText {
-          width: 100%;
-          border: 1px solid #d1d5db;
-          border-radius: 10px;
-          padding: 12px;
-          margin: 7px 0 13px;
-        }
-
-        .modalPrimary {
-          width: 100%;
-          border: 0;
-          border-radius: 10px;
-          padding: 13px;
-          background: #111827;
-          color: white;
-          font-weight: 800;
-        }
-
-        .assistant {
-          position: fixed;
-          right: 20px;
-          bottom: 20px;
-          z-index: 50;
-        }
-
-        .assistantButton {
-          border: 0;
-          border-radius: 999px;
-          background: #111827;
-          color: white;
-          padding: 14px 18px;
-          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-          font-weight: 800;
-        }
-
-        .assistantBox {
-          width: min(350px, calc(100vw - 40px));
-          background: white;
-          border: 1px solid #e5e7eb;
-          border-radius: 18px;
-          margin-bottom: 10px;
-          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-          overflow: hidden;
-        }
-
-        .assistantTop {
-          background: #111827;
-          color: white;
-          padding: 16px;
-        }
-
-        .assistantBody {
-          padding: 16px;
-        }
-
-        .notice {
-          position: fixed;
-          left: 50%;
-          top: 78px;
-          transform: translateX(-50%);
-          background: #111827;
-          color: white;
-          padding: 12px 17px;
-          border-radius: 10px;
-          z-index: 200;
-          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-        }
-
-        @media (max-width: 900px) {
-          .products {
-            grid-template-columns: repeat(2, 1fr);
-          }
-
-          .features {
-            grid-template-columns: repeat(2, 1fr);
-          }
-
-          .heroCard {
-            padding: 35px;
-          }
-
-          .heroVisual {
-            font-size: 90px;
-          }
-
-          .footerInner {
-            grid-template-columns: 1fr 1fr;
-          }
-        }
-
-        @media (max-width: 650px) {
-          .headerInner {
-            flex-wrap: wrap;
-          }
-
-          .search {
-            order: 3;
-            flex-basis: 100%;
-          }
-
-          .heroCard {
-            min-height: 0;
-            padding: 30px 24px;
-          }
-
-          .heroVisual {
-            display: none;
-          }
-
-          .products,
-          .features {
-            grid-template-columns: 1fr;
-          }
-
-          .footerInner {
-            grid-template-columns: 1fr;
-          }
-        }
-      `}</style>
-
-      <div className="topbar">
-        Free shipping on qualifying orders • Shop Marlow with confidence
-      </div>
-
-      <header className="header">
-        <div className="headerInner">
-          <button className="logo" onClick={() => setCategory("All")}>
-            MARLOW
+    <main className="min-h-screen bg-slate-50 text-slate-900">
+      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center gap-4 px-5 py-4">
+          <button
+            onClick={() => {
+              setSelectedProduct(null);
+              setShowCart(false);
+              setSearch("");
+            }}
+            className="text-2xl font-black tracking-tight text-slate-950"
+          >
+            Marlow
           </button>
 
-          <div className="search">
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search products..."
-              aria-label="Search products"
-            />
-          </div>
-
-          <div className="headerActions">
-            <button
-              className="iconButton"
-              onClick={() => setAccountOpen(true)}
-            >
-              👤 Account
-            </button>
-
-            <button
-              className="iconButton cartButton"
-              onClick={() =>
-                showComingSoon(
-                  cartCount
-                    ? `${cartCount} item(s) in your cart • $${cartTotal.toFixed(2)}`
-                    : "Your cart is empty."
-                )
-              }
-            >
-              🛒 Cart
-              {cartCount > 0 && <span className="badge">{cartCount}</span>}
-            </button>
-          </div>
-        </div>
-
-        <nav className="nav">
-          <div className="navInner">
-            {categories.map((item) => (
-              <button
-                key={item}
-                className={category === item ? "active" : ""}
-                onClick={() => setCategory(item)}
-              >
-                {item}
-              </button>
-            ))}
-
-            <button onClick={() => setAssistantOpen(true)}>
-              🤖 AI Shopping Assistant
-            </button>
-
-            <button onClick={() => setSupportOpen(true)}>
-              Help & Support
-            </button>
-
-            <select
-              className="formSelect"
-              style={{
-                width: "auto",
-                margin: "5px 0",
-                border: 0,
-                background: "transparent",
-              }}
-              value={language}
-              onChange={(event) => setLanguage(event.target.value)}
-              aria-label="Language"
-            >
-              {languages.map((item) => (
-                <option key={item}>{item}</option>
-              ))}
-            </select>
-          </div>
-        </nav>
-      </header>
-
-      {notice && <div className="notice">{notice}</div>}
-
-      <section className="hero">
-        <div className="heroCard">
-          <div className="heroText">
-            <div className="eyebrow">Welcome to Marlow</div>
-            <h1>Better shopping. Made simple.</h1>
-            <p>
-              Discover useful products, great everyday values, and a shopping
-              experience designed around you.
-            </p>
-            <button
-              className="primary"
-              onClick={() =>
-                document
-                  .getElementById("products")
-                  ?.scrollIntoView({ behavior: "smooth" })
-              }
-            >
-              Shop Now →
-            </button>
-          </div>
-
-          <div className="heroVisual">🛍️</div>
-        </div>
-      </section>
-
-      <section className="section" id="products">
-        <div className="sectionHeader">
-          <div>
-            <h2>Featured Products</h2>
-            <div className="muted">
-              {filteredProducts.length} products available
+          <div className="hidden flex-1 md:block">
+            <div className="relative mx-auto max-w-2xl">
+              <input
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setSelectedProduct(null);
+                  setShowCart(false);
+                }}
+                placeholder="Search products..."
+                className="w-full rounded-full border border-slate-300 bg-slate-100 px-5 py-3 pr-12 outline-none transition focus:border-slate-900 focus:bg-white"
+              />
+              <span className="absolute right-5 top-3 text-lg">⌕</span>
             </div>
           </div>
+
+          <button
+            onClick={() => {
+              setShowCart(true);
+              setSelectedProduct(null);
+            }}
+            className="relative rounded-full border border-slate-300 bg-white px-5 py-3 font-semibold transition hover:bg-slate-100"
+          >
+            Cart
+            {cartCount > 0 && (
+              <span className="ml-2 rounded-full bg-slate-900 px-2 py-1 text-xs text-white">
+                {cartCount}
+              </span>
+            )}
+          </button>
         </div>
 
-        <div className="products">
-          {filteredProducts.map((product) => (
-            <article className="product" key={product.id}>
-              <div className="productImage">{product.emoji}</div>
+        <div className="px-5 pb-4 md:hidden">
+          <input
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setSelectedProduct(null);
+              setShowCart(false);
+            }}
+            placeholder="Search products..."
+            className="w-full rounded-full border border-slate-300 bg-slate-100 px-5 py-3 outline-none focus:border-slate-900"
+          />
+        </div>
+      </header>
 
-              <div className="productBody">
-                <div className="productCategory">{product.category}</div>
-                <h3>{product.name}</h3>
-                <div className="rating">
-                  ⭐ {product.rating} • Highly rated
-                </div>
+      <section className="mx-auto max-w-7xl px-5 pb-10 pt-12">
+        {!selectedProduct && !showCart && (
+          <>
+            <div className="mb-10 rounded-3xl bg-slate-900 px-7 py-12 text-white md:px-12">
+              <p className="mb-3 text-sm font-bold uppercase tracking-[0.25em] text-slate-300">
+                Welcome to Marlow
+              </p>
+              <h1 className="max-w-3xl text-4xl font-black tracking-tight md:text-6xl">
+                Find what you need. Shop it with Marlow.
+              </h1>
+              <p className="mt-5 max-w-2xl text-lg text-slate-300">
+                Discover products, explore details, add items to your cart, or
+                buy something right away.
+              </p>
+            </div>
 
-                <div className="priceRow">
-                  <div className="price">${product.price.toFixed(2)}</div>
+            <div className="mb-6 flex items-end justify-between">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-wider text-slate-500">
+                  {search ? "Search Results" : "For You"}
+                </p>
+                <h2 className="text-3xl font-black">
+                  {search ? `Results for "${search}"` : "Recommended for You"}
+                </h2>
+              </div>
+              <p className="text-sm text-slate-500">
+                {filteredProducts.length} products
+              </p>
+            </div>
+
+            {filteredProducts.length === 0 ? (
+              <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-12 text-center">
+                <h3 className="text-2xl font-bold">We couldn't find that yet.</h3>
+                <p className="mt-2 text-slate-500">
+                  Try another search.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+                {filteredProducts.map((product) => (
+                  <article
+                    key={product.id}
+                    className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+                  >
+                    <button
+                      onClick={() => setSelectedProduct(product)}
+                      className="block w-full text-left"
+                    >
+                      <div className="aspect-square overflow-hidden bg-slate-100">
+                        <img
+                          src={product.image}
+                          alt={product.name}
+                          className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                        />
+                      </div>
+
+                      <div className="p-4">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                          {product.category}
+                        </p>
+                        <h3 className="mt-1 min-h-12 font-bold leading-tight">
+                          {product.name}
+                        </h3>
+                        <p className="mt-3 text-xl font-black">
+                          ${product.price.toFixed(2)}
+                        </p>
+                      </div>
+                    </button>
+
+                    <div className="grid grid-cols-2 gap-2 px-4 pb-4">
+                      <button
+                        onClick={() => addToCart(product)}
+                        className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-bold hover:bg-slate-100"
+                      >
+                        Add to Cart
+                      </button>
+
+                      <button
+                        onClick={() => buyNow(product)}
+                        className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-bold text-white hover:bg-slate-700"
+                      >
+                        Buy Now
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {selectedProduct && (
+          <section className="mx-auto max-w-5xl">
+            <button
+              onClick={() => setSelectedProduct(null)}
+              className="mb-6 font-semibold text-slate-600 hover:text-slate-950"
+            >
+              ← Back to products
+            </button>
+
+            <div className="grid overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl md:grid-cols-2">
+              <div className="bg-slate-100">
+                <img
+                  src={selectedProduct.image}
+                  alt={selectedProduct.name}
+                  className="h-full min-h-[350px] w-full object-cover"
+                />
+              </div>
+
+              <div className="p-7 md:p-10">
+                <p className="text-sm font-bold uppercase tracking-wider text-slate-400">
+                  {selectedProduct.category}
+                </p>
+
+                <h1 className="mt-2 text-3xl font-black md:text-4xl">
+                  {selectedProduct.name}
+                </h1>
+
+                <p className="mt-5 text-3xl font-black">
+                  ${selectedProduct.price.toFixed(2)}
+                </p>
+
+                <div className="my-7 h-px bg-slate-200" />
+
+                <h2 className="text-lg font-bold">Product Information</h2>
+                <p className="mt-3 leading-7 text-slate-600">
+                  {selectedProduct.description}
+                </p>
+
+                <div className="mt-8 grid gap-3 sm:grid-cols-2">
+                  <button
+                    onClick={() => addToCart(selectedProduct)}
+                    className="rounded-2xl border border-slate-300 px-5 py-4 font-bold hover:bg-slate-100"
+                  >
+                    Add to Cart
+                  </button>
 
                   <button
-                    className="addButton"
-                    onClick={() => addToCart(product)}
+                    onClick={() => buyNow(selectedProduct)}
+                    className="rounded-2xl bg-slate-900 px-5 py-4 font-bold text-white hover:bg-slate-700"
                   >
-                    Add
+                    Buy Now
                   </button>
                 </div>
               </div>
-            </article>
-          ))}
-        </div>
-
-        {filteredProducts.length === 0 && (
-          <div className="feature">
-            <strong>No products found.</strong>
-            <span className="muted">
-              Try another search or choose a different category.
-            </span>
-          </div>
+            </div>
+          </section>
         )}
-      </section>
 
-      <section className="section">
-        <div className="sectionHeader">
-          <div>
-            <h2>Why shop Marlow?</h2>
-            <div className="muted">Built for a modern shopping experience.</div>
-          </div>
-        </div>
-
-        <div className="features">
-          <div className="feature">
-            <div style={{ fontSize: 30 }}>🔒</div>
-            <strong>Secure Shopping</strong>
-            <span className="muted">
-              Customer accounts and secure checkout infrastructure can be
-              connected as the platform is completed.
-            </span>
-          </div>
-
-          <div className="feature">
-            <div style={{ fontSize: 30 }}>🤖</div>
-            <strong>AI Shopping Help</strong>
-            <span className="muted">
-              Get help finding products and deciding what fits your needs.
-            </span>
-          </div>
-
-          <div className="feature">
-            <div style={{ fontSize: 30 }}>🌎</div>
-            <strong>Global Customers</strong>
-            <span className="muted">
-              Multiple language options are built into the storefront design.
-            </span>
-          </div>
-
-          <div className="feature">
-            <div style={{ fontSize: 30 }}>💬</div>
-            <strong>Customer Support</strong>
-            <span className="muted">
-              Customers can reach support with questions, concerns, and
-              complaints.
-            </span>
-          </div>
-        </div>
-      </section>
-
-      <footer className="footer">
-        <div className="footerInner">
-          <div>
-            <h3>MARLOW</h3>
-            <p style={{ color: "#9ca3af", lineHeight: 1.6 }}>
-              A modern online shopping platform designed to make buying simple.
-            </p>
-            <p style={{ color: "#6b7280", fontSize: 13 }}>
-              © {new Date().getFullYear()} Marlow. All rights reserved.
-            </p>
-          </div>
-
-          <div>
-            <h3>Shop</h3>
-            <button onClick={() => setCategory("Electronics")}>
-              Electronics
-            </button>
-            <button onClick={() => setCategory("Home")}>Home</button>
-            <button onClick={() => setCategory("Travel")}>Travel</button>
-            <button onClick={() => setCategory("Lifestyle")}>Lifestyle</button>
-          </div>
-
-          <div>
-            <h3>Customer</h3>
-            <button onClick={() => setAccountOpen(true)}>
-              My Account
-            </button>
-            <button onClick={() => setSupportOpen(true)}>
-              Help Center
-            </button>
+        {showCart && (
+          <section className="mx-auto max-w-4xl">
             <button
-              onClick={() =>
-                showComingSoon("Returns information will be connected next.")
-              }
+              onClick={() => setShowCart(false)}
+              className="mb-6 font-semibold text-slate-600 hover:text-slate-950"
             >
-              Returns
-            </button>
-          </div>
-
-          <div>
-            <h3>Business</h3>
-            <button
-              onClick={() =>
-                showComingSoon("Business and admin access will be connected.")
-              }
-            >
-              Admin Portal
-            </button>
-            <button
-              onClick={() =>
-                showComingSoon("Supplier management will be connected.")
-              }
-            >
-              Supplier Network
-            </button>
-            <button
-              onClick={() =>
-                showComingSoon("Business information will be available here.")
-              }
-            >
-              About Marlow
-            </button>
-          </div>
-        </div>
-      </footer>
-
-      {accountOpen && (
-        <div
-          className="modalBackdrop"
-          onClick={() => setAccountOpen(false)}
-        >
-          <div className="modal" onClick={(event) => event.stopPropagation()}>
-            <div className="modalHeader">
-              <h2>Customer Account</h2>
-              <button
-                className="close"
-                onClick={() => setAccountOpen(false)}
-              >
-                ✕
-              </button>
-            </div>
-
-            <p className="muted">
-              Your Marlow customer account will let you manage orders,
-              addresses, saved products, and account preferences.
-            </p>
-
-            <label>Email or Username</label>
-            <input
-              className="formInput"
-              placeholder="Enter your email or username"
-            />
-
-            <label>Password</label>
-            <input
-              className="formInput"
-              type="password"
-              placeholder="Enter your password"
-            />
-
-            <button
-              className="modalPrimary"
-              onClick={() =>
-                showComingSoon(
-                  "Account authentication will be connected to the secure customer system."
-                )
-              }
-            >
-              Sign In
+              ← Continue Shopping
             </button>
 
-            <button
-              style={{
-                width: "100%",
-                border: 0,
-                background: "transparent",
-                padding: 14,
-              }}
-              onClick={() =>
-                showComingSoon("Customer account registration is next.")
-              }
-            >
-              Create a new account
-            </button>
-          </div>
-        </div>
-      )}
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-xl md:p-8">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-bold uppercase tracking-wider text-slate-400">
+                    Your Cart
+                  </p>
+                  <h1 className="text-3xl font-black">Shopping Cart</h1>
+                </div>
 
-      {supportOpen && (
-        <div
-          className="modalBackdrop"
-          onClick={() => setSupportOpen(false)}
-        >
-          <div className="modal" onClick={(event) => event.stopPropagation()}>
-            <div className="modalHeader">
-              <h2>Help & Support</h2>
-              <button className="close" onClick={() => setSupportOpen(false)}>
-                ✕
-              </button>
-            </div>
-
-            <p className="muted">
-              Have a question, complaint, or concern? Send a message to the
-              Marlow support team.
-            </p>
-
-            <input className="formInput" placeholder="Your name" />
-            <input className="formInput" placeholder="Email address" />
-
-            <select className="formSelect">
-              <option>Question</option>
-              <option>Order problem</option>
-              <option>Complaint</option>
-              <option>Product concern</option>
-              <option>Other</option>
-            </select>
-
-            <textarea
-              className="formText"
-              rows="5"
-              placeholder="How can we help?"
-            />
-
-            <button
-              className="modalPrimary"
-              onClick={() =>
-                showComingSoon(
-                  "Support ticket delivery will be connected to the Marlow admin alert system."
-                )
-              }
-            >
-              Send Support Request
-            </button>
-          </div>
-        </div>
-      )}
-
-      <div className="assistant">
-        {assistantOpen && (
-          <div className="assistantBox">
-            <div className="assistantTop">
-              <strong>🤖 Marlow Shopping Assistant</strong>
-              <div style={{ fontSize: 13, marginTop: 5, opacity: 0.8 }}>
-                What are you shopping for today?
+                <span className="rounded-full bg-slate-100 px-4 py-2 font-bold">
+                  {cartCount} {cartCount === 1 ? "item" : "items"}
+                </span>
               </div>
+
+              {cart.length === 0 ? (
+                <div className="py-16 text-center">
+                  <div className="text-5xl">🛒</div>
+                  <h2 className="mt-5 text-2xl font-bold">
+                    Your cart is empty
+                  </h2>
+                  <p className="mt-2 text-slate-500">
+                    Add something from the store to see it here.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="mt-8 space-y-4">
+                    {cart.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex gap-4 rounded-2xl border border-slate-200 p-4"
+                      >
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className="h-24 w-24 rounded-xl object-cover"
+                        />
+
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-bold">{item.name}</h3>
+                          <p className="mt-1 font-black">
+                            ${item.price.toFixed(2)}
+                          </p>
+
+                          <div className="mt-3 flex items-center gap-3">
+                            <button
+                              onClick={() => changeQuantity(item.id, -1)}
+                              className="h-8 w-8 rounded-full border font-bold"
+                            >
+                              −
+                            </button>
+
+                            <span className="font-bold">{item.quantity}</span>
+
+                            <button
+                              onClick={() => changeQuantity(item.id, 1)}
+                              className="h-8 w-8 rounded-full border font-bold"
+                            >
+                              +
+                            </button>
+
+                            <button
+                              onClick={() => removeFromCart(item.id)}
+                              className="ml-3 text-sm font-semibold text-red-600"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+
+                        <p className="font-black">
+                          ${(item.price * item.quantity).toFixed(2)}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-8 border-t border-slate-200 pt-6">
+                    <div className="flex items-center justify-between text-lg">
+                      <span className="font-semibold">Subtotal</span>
+                      <span className="text-2xl font-black">
+                        ${cartTotal.toFixed(2)}
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={() =>
+                        alert(
+                          "Checkout will be connected after the product catalog and payment system are added."
+                        )
+                      }
+                      className="mt-5 w-full rounded-2xl bg-slate-900 px-6 py-4 font-bold text-white hover:bg-slate-700"
+                    >
+                      Checkout
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
-
-            <div className="assistantBody">
-              <p>
-                I can help you browse categories, compare products, and find
-                items based on what you're looking for.
-              </p>
-
-              <button
-                className="modalPrimary"
-                onClick={() => {
-                  setAssistantOpen(false);
-                  setCategory("Electronics");
-                  setNotice("Showing electronics you may like.");
-                  setTimeout(() => setNotice(""), 2500);
-                }}
-              >
-                Show me electronics
-              </button>
-
-              <button
-                style={{
-                  width: "100%",
-                  marginTop: 8,
-                  border: "1px solid #d1d5db",
-                  background: "white",
-                  borderRadius: 10,
-                  padding: 11,
-                }}
-                onClick={() => {
-                  setAssistantOpen(false);
-                  setCategory("Home");
-                }}
-              >
-                Help me shop for my home
-              </button>
-            </div>
-          </div>
+          </section>
         )}
-
-        <button
-          className="assistantButton"
-          onClick={() => setAssistantOpen((open) => !open)}
-        >
-          🤖 AI Assistant
-        </button>
-      </div>
+      </section>
     </main>
   );
 }
