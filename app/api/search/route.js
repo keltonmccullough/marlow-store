@@ -1,19 +1,24 @@
+import { NextResponse } from "next/server";
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get("q")?.trim();
 
     if (!query) {
-      return Response.json({
-        products: [],
-        message: "Enter a product to search.",
-      });
+      return NextResponse.json(
+        {
+          products: [],
+          message: "Enter a product to search.",
+        },
+        { status: 400 }
+      );
     }
 
     const apiKey = process.env.CJ_API_KEY;
 
     if (!apiKey) {
-      return Response.json(
+      return NextResponse.json(
         {
           products: [],
           message: "CJ API key is not configured.",
@@ -22,6 +27,7 @@ export async function GET(request) {
       );
     }
 
+    // Get a temporary CJ access token
     const tokenResponse = await fetch(
       "https://developers.cjdropshipping.com/api2.0/v1/authentication/getAccessToken",
       {
@@ -39,7 +45,9 @@ export async function GET(request) {
     const tokenData = await tokenResponse.json();
 
     if (!tokenResponse.ok || !tokenData?.data?.accessToken) {
-      return Response.json(
+      console.error("CJ authentication failed:", tokenData);
+
+      return NextResponse.json(
         {
           products: [],
           message: "CJ authentication failed.",
@@ -50,26 +58,30 @@ export async function GET(request) {
 
     const accessToken = tokenData.data.accessToken;
 
-    const cjUrl = new URL(
-      "https://developers.cjdropshipping.com/api2.0/v1/product/listV2"
+    // Search CJ's product catalog
+    const productResponse = await fetch(
+      "https://developers.cjdropshipping.com/api2.0/v1/product/listV2",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "CJ-Access-Token": accessToken,
+        },
+        body: JSON.stringify({
+          keyWord: query,
+          pageNum: 1,
+          pageSize: 20,
+        }),
+        cache: "no-store",
+      }
     );
-
-    cjUrl.searchParams.set("page", "1");
-    cjUrl.searchParams.set("size", "20");
-    cjUrl.searchParams.set("keyWord", query);
-
-    const productResponse = await fetch(cjUrl.toString(), {
-      method: "GET",
-      headers: {
-        "CJ-Access-Token": accessToken,
-      },
-      cache: "no-store",
-    });
 
     const productData = await productResponse.json();
 
     if (!productResponse.ok) {
-      return Response.json(
+      console.error("CJ product search failed:", productData);
+
+      return NextResponse.json(
         {
           products: [],
           message: "CJ product search failed.",
@@ -78,17 +90,17 @@ export async function GET(request) {
       );
     }
 
-    return Response.json({
-      products: productData?.data?.content ?? [],
+    return NextResponse.json({
+      products: productData?.data?.list || [],
       query,
     });
   } catch (error) {
     console.error("CJ search error:", error);
 
-    return Response.json(
+    return NextResponse.json(
       {
         products: [],
-        message: "Something went wrong while searching CJ.",
+        message: "Unable to connect to the CJ supplier catalog.",
       },
       { status: 500 }
     );
