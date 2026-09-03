@@ -131,28 +131,62 @@ const categories = [
 
 export default function Home() {
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("All");
-  const [product, setProduct] = useState(null);
-  const [cartOpen, setCartOpen] = useState(false);
-  const [cart, setCart] = useState([]);
+const [category, setCategory] = useState("All");
+const [product, setProduct] = useState(null);
+const [cartOpen, setCartOpen] = useState(false);
+const [cart, setCart] = useState([]);
+const [supplierProducts, setSupplierProducts] = useState([]);
+const [searchingSupplier, setSearchingSupplier] = useState(false);
+const [supplierError, setSupplierError] = useState("");
 
-  const filtered = useMemo(() => {
-    const query = search.trim().toLowerCase();
+ const filtered = useMemo(() => {
+  const query = search.trim().toLowerCase();
 
-    return products.filter((item) => {
-      const categoryMatch =
-        category === "All" || item.category === category;
+  if (query) {
+    return supplierProducts;
+  }
 
-      const searchMatch =
-        !query ||
-        item.name.toLowerCase().includes(query) ||
-        item.category.toLowerCase().includes(query) ||
-        item.description.toLowerCase().includes(query);
+  return products.filter((item) => {
+    const categoryMatch =
+      category === "All" || item.category === category;
 
-      return categoryMatch && searchMatch;
-    });
-  }, [search, category]);
+    return categoryMatch;
+  });
+}, [search, category, supplierProducts]);
+  async function searchSupplier(query) {
+  const trimmedQuery = query.trim();
 
+  if (!trimmedQuery) {
+    setSupplierProducts([]);
+    setSupplierError("");
+    return;
+  }
+
+  setSearchingSupplier(true);
+  setSupplierError("");
+
+  try {
+    const response = await fetch(
+      `/api/search?q=${encodeURIComponent(trimmedQuery)}`
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data?.message || "Supplier search failed.");
+    }
+
+    setSupplierProducts(data?.products || []);
+  } catch (error) {
+    console.error("Supplier search error:", error);
+    setSupplierProducts([]);
+    setSupplierError(
+      "We couldn't connect to the supplier catalog. Please try again."
+    );
+  } finally {
+    setSearchingSupplier(false);
+  }
+}
   const cartCount = cart.reduce((total, item) => total + item.quantity, 0);
 
   const cartTotal = cart.reduce(
@@ -926,7 +960,12 @@ export default function Home() {
               }}
               placeholder="Search products, brands and more..."
             />
-            <button aria-label="Search">⌕</button>
+           <button
+  aria-label="Search"
+  onClick={() => searchSupplier(search)}
+>
+  ⌕
+</button>
           </div>
 
           <div className="header-links">
