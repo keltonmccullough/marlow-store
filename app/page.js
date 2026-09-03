@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const demoProducts = [
   {
@@ -140,6 +140,7 @@ const categories = [
 function getSupplierName(item) {
   return (
     item.productName ||
+    item.nameEn ||
     item.name ||
     item.title ||
     item.productTitle ||
@@ -149,6 +150,7 @@ function getSupplierName(item) {
 
 function getSupplierImage(item) {
   return (
+    item.bigImage ||
     item.productImage ||
     item.productImageUrl ||
     item.image ||
@@ -160,6 +162,7 @@ function getSupplierImage(item) {
 
 function getSupplierCost(item) {
   const possibleValues = [
+    item.nowPrice,
     item.sellPrice,
     item.productPrice,
     item.price,
@@ -169,6 +172,7 @@ function getSupplierCost(item) {
 
   for (const value of possibleValues) {
     const number = Number(value);
+
     if (Number.isFinite(number) && number > 0) {
       return number;
     }
@@ -177,11 +181,19 @@ function getSupplierCost(item) {
   return 0;
 }
 
+/*
+  Marlow automatic pricing.
+
+  Goal:
+  - Never make less than $1 gross profit.
+  - Use a larger percentage markup on lower-cost products.
+  - Use a smaller percentage markup on expensive products.
+*/
 function calculateMarlowPrice(cost) {
   const numericCost = Number(cost);
 
   if (!Number.isFinite(numericCost) || numericCost <= 0) {
-    return 1;
+    return 0;
   }
 
   let markup;
@@ -203,7 +215,10 @@ function calculateMarlowPrice(cost) {
   const percentagePrice = numericCost * (1 + markup);
   const minimumProfitPrice = numericCost + 1;
 
-  return Math.max(percentagePrice, minimumProfitPrice);
+  return Math.max(
+    percentagePrice,
+    minimumProfitPrice
+  );
 }
 
 function convertSupplierProduct(item, index) {
@@ -218,74 +233,368 @@ function convertSupplierProduct(item, index) {
       item.id ||
       item.sku ||
       `cj-${index}-${getSupplierName(item)}`,
+
     name: getSupplierName(item),
+
     price: sellingPrice,
-    oldPrice: sellingPrice * 1.15,
+
+    oldPrice:
+      sellingPrice > 0
+        ? sellingPrice * 1.15
+        : 0,
+
     category:
       item.categoryName ||
-      item.category ||
       item.categoryNameEn ||
+      item.category ||
       "Products",
-    rating: Number(item.rating) || 4.5,
-    reviews: Number(item.reviewCount) || 0,
+
+    rating:
+      Number(item.rating) || 4.5,
+
+    reviews:
+      Number(item.reviewCount) || 0,
+
     badge: "Marlow Pick",
+
     image,
+
     description:
       item.description ||
       item.productDescription ||
       "Product supplied through Marlow's authorized supplier catalog.",
+
     supplierCost: cost,
+
     supplierProduct: item,
+
     supplier: "CJ Dropshipping",
+
     demo: false,
   };
+}
+
+function ProductCard({
+  item,
+  addToCart,
+  buyNow,
+  openProduct,
+}) {
+  return (
+    <article className="card">
+      <button
+        className="photo-button"
+        onClick={() => openProduct(item)}
+      >
+        <div className="photo">
+          <img
+            src={item.image}
+            alt={item.name}
+          />
+
+          <span className="badge">
+            {item.badge}
+          </span>
+        </div>
+
+        <div className="info">
+          <div className="category">
+            {item.category}
+          </div>
+
+          <div className="name">
+            {item.name}
+          </div>
+
+          <div className="rating">
+            <span className="stars">
+              ★★★★★
+            </span>{" "}
+            {item.rating}
+
+            {item.reviews > 0 &&
+              ` (${item.reviews.toLocaleString()})`}
+          </div>
+
+          <div className="price-row">
+            <span className="price">
+              ${item.price.toFixed(2)}
+            </span>
+
+            {item.oldPrice > 0 && (
+              <span className="old">
+                ${item.oldPrice.toFixed(2)}
+              </span>
+            )}
+          </div>
+        </div>
+      </button>
+
+      <div className="actions">
+        <button
+          className="add"
+          onClick={() => addToCart(item)}
+        >
+          Add to Cart
+        </button>
+
+        <button
+          className="buy"
+          onClick={() => buyNow(item)}
+        >
+          Buy Now
+        </button>
+      </div>
+    </article>
+  );
+}
+
+function ProductSection({
+  title,
+  subtitle,
+  products,
+  addToCart,
+  buyNow,
+  openProduct,
+}) {
+  if (!products.length) {
+    return null;
+  }
+
+  return (
+    <section className="section">
+      <div className="section-head">
+        <div>
+          <h2>{title}</h2>
+          <p>{subtitle}</p>
+        </div>
+
+        <span className="section-count">
+          {products.length} products
+        </span>
+      </div>
+
+      <div className="products">
+        {products.map((item) => (
+          <ProductCard
+            key={item.id}
+            item={item}
+            addToCart={addToCart}
+            buyNow={buyNow}
+            openProduct={openProduct}
+          />
+        ))}
+      </div>
+    </section>
+  );
 }
 
 export default function Home() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
+
   const [product, setProduct] = useState(null);
+
   const [cartOpen, setCartOpen] = useState(false);
+
   const [cart, setCart] = useState([]);
 
-  const [supplierProducts, setSupplierProducts] = useState([]);
-  const [searchingSupplier, setSearchingSupplier] = useState(false);
-  const [supplierError, setSupplierError] = useState("");
+  const [supplierProducts, setSupplierProducts] =
+    useState([]);
+
+  const [homeProducts, setHomeProducts] =
+    useState([]);
+
+  const [searchingSupplier, setSearchingSupplier] =
+    useState(false);
+
+  const [loadingHomeProducts, setLoadingHomeProducts] =
+    useState(false);
+
+  const [supplierError, setSupplierError] =
+    useState("");
+
+  const [homeError, setHomeError] =
+    useState("");
 
   const displayProducts =
-    search.trim().length > 0 || supplierProducts.length > 0
+    search.trim().length > 0
       ? supplierProducts
-      : demoProducts;
+      : category !== "All"
+        ? homeProducts.filter(
+            (item) =>
+              item.category === category
+          )
+        : demoProducts;
 
   const filtered = useMemo(() => {
-    const query = search.trim().toLowerCase();
+    const query = search
+      .trim()
+      .toLowerCase();
 
     return displayProducts.filter((item) => {
       const categoryMatch =
-        category === "All" || item.category === category;
+        category === "All" ||
+        item.category === category;
 
       const searchMatch =
         !query ||
-        item.name.toLowerCase().includes(query) ||
-        item.category.toLowerCase().includes(query) ||
-        item.description.toLowerCase().includes(query);
+        item.name
+          .toLowerCase()
+          .includes(query) ||
+        item.category
+          .toLowerCase()
+          .includes(query) ||
+        item.description
+          .toLowerCase()
+          .includes(query);
 
-      return categoryMatch && searchMatch;
+      return (
+        categoryMatch && searchMatch
+      );
     });
-  }, [search, category, displayProducts]);
+  }, [
+    search,
+    category,
+    displayProducts,
+  ]);
 
   const cartCount = cart.reduce(
-    (total, item) => total + item.quantity,
+    (total, item) =>
+      total + item.quantity,
     0
   );
 
   const cartTotal = cart.reduce(
-    (total, item) => total + item.price * item.quantity,
+    (total, item) =>
+      total +
+      item.price *
+        item.quantity,
     0
   );
 
-  async function searchSupplierCatalog(query) {
-    const cleanQuery = query.trim();
+  async function loadHomeProducts() {
+    setLoadingHomeProducts(true);
+    setHomeError("");
+
+    /*
+      These broad searches give the home page
+      several product groups without requiring
+      customers to search manually.
+    */
+
+    const homeSearches = [
+      "popular products",
+      "electronics",
+      "home",
+      "clothing",
+      "beauty",
+      "sports",
+      "toys",
+      "travel",
+    ];
+
+    try {
+      const responses =
+        await Promise.allSettled(
+          homeSearches.map((term) =>
+            fetch(
+              `/api/search?q=${encodeURIComponent(
+                term
+              )}`
+            )
+          )
+        );
+
+      const allProducts = [];
+
+      for (
+        let i = 0;
+        i < responses.length;
+        i++
+      ) {
+        const result =
+          responses[i];
+
+        if (
+          result.status !==
+          "fulfilled"
+        ) {
+          continue;
+        }
+
+        if (!result.value.ok) {
+          continue;
+        }
+
+        const data =
+          await result.value.json();
+
+        const raw =
+          Array.isArray(
+            data?.products
+          )
+            ? data.products
+            : [];
+
+        raw.forEach(
+          (item, index) => {
+            const converted =
+              convertSupplierProduct(
+                item,
+                index
+              );
+
+            if (
+              converted.image &&
+              converted.price > 0
+            ) {
+              allProducts.push(
+                converted
+              );
+            }
+          }
+        );
+      }
+
+      const unique =
+        Array.from(
+          new Map(
+            allProducts.map(
+              (item) => [
+                item.id,
+                item,
+              ]
+            )
+          ).values()
+        );
+
+      setHomeProducts(
+        unique.slice(0, 40)
+      );
+    } catch (error) {
+      console.error(
+        "Home catalog error:",
+        error
+      );
+
+      setHomeError(
+        "The live product sections are temporarily unavailable."
+      );
+    } finally {
+      setLoadingHomeProducts(false);
+    }
+  }
+
+  useEffect(() => {
+    loadHomeProducts();
+  }, []);
+
+  async function searchSupplierCatalog(
+    query
+  ) {
+    const cleanQuery =
+      query.trim();
 
     if (!cleanQuery) {
       setSupplierProducts([]);
@@ -297,11 +606,15 @@ export default function Home() {
     setSupplierError("");
 
     try {
-      const response = await fetch(
-        `/api/search?q=${encodeURIComponent(cleanQuery)}`
-      );
+      const response =
+        await fetch(
+          `/api/search?q=${encodeURIComponent(
+            cleanQuery
+          )}`
+        );
 
-      const data = await response.json();
+      const data =
+        await response.json();
 
       if (!response.ok) {
         throw new Error(
@@ -311,19 +624,34 @@ export default function Home() {
         );
       }
 
-      const rawProducts = Array.isArray(data?.products)
-        ? data.products
-        : [];
+      const rawProducts =
+        Array.isArray(
+          data?.products
+        )
+          ? data.products
+          : [];
 
-      const convertedProducts = rawProducts
-        .map(convertSupplierProduct)
-        .filter((item) => item.image);
+      const convertedProducts =
+        rawProducts
+          .map(
+            convertSupplierProduct
+          )
+          .filter(
+            (item) =>
+              item.image &&
+              item.price > 0
+          );
 
-      setSupplierProducts(convertedProducts);
+      setSupplierProducts(
+        convertedProducts
+      );
 
-      if (convertedProducts.length === 0) {
+      if (
+        convertedProducts.length ===
+        0
+      ) {
         setSupplierError(
-          "CJ connected, but no products with usable information were returned for that search."
+          "CJ connected, but no usable products were returned for that search."
         );
       }
     } catch (error) {
@@ -340,8 +668,11 @@ export default function Home() {
     }
   }
 
-  function handleSearchChange(value) {
+  function handleSearchChange(
+    value
+  ) {
     setSearch(value);
+
     setProduct(null);
     setCartOpen(false);
 
@@ -353,44 +684,81 @@ export default function Home() {
 
   function handleSearchSubmit() {
     if (search.trim()) {
-      searchSupplierCatalog(search);
+      setCategory("All");
+
+      searchSupplierCatalog(
+        search
+      );
     }
+  }
+
+  function openProduct(item) {
+    setProduct(item);
+    setCartOpen(false);
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
   }
 
   function addToCart(item) {
     setCart((current) => {
-      const existing = current.find((x) => x.id === item.id);
+      const existing =
+        current.find(
+          (x) => x.id === item.id
+        );
 
       if (existing) {
-        return current.map((x) =>
-          x.id === item.id
-            ? { ...x, quantity: x.quantity + 1 }
-            : x
+        return current.map(
+          (x) =>
+            x.id === item.id
+              ? {
+                  ...x,
+                  quantity:
+                    x.quantity + 1,
+                }
+              : x
         );
       }
 
-      return [...current, { ...item, quantity: 1 }];
+      return [
+        ...current,
+        {
+          ...item,
+          quantity: 1,
+        },
+      ];
     });
   }
 
   function buyNow(item) {
     addToCart(item);
+
     setProduct(null);
     setCartOpen(true);
   }
 
-  function updateQuantity(id, amount) {
+  function updateQuantity(
+    id,
+    amount
+  ) {
     setCart((current) =>
       current
         .map((item) =>
           item.id === id
             ? {
                 ...item,
-                quantity: item.quantity + amount,
+                quantity:
+                  item.quantity +
+                  amount,
               }
             : item
         )
-        .filter((item) => item.quantity > 0)
+        .filter(
+          (item) =>
+            item.quantity > 0
+        )
     );
   }
 
@@ -408,6 +776,49 @@ export default function Home() {
     });
   }
 
+  /*
+    Home-page groups.
+
+    When CJ returns enough products,
+    these sections use live supplier products.
+
+    Demo products remain as a visual fallback
+    so the storefront does not look empty.
+  */
+
+  const liveProducts =
+    homeProducts.length
+      ? homeProducts
+      : demoProducts;
+
+  const featuredProducts =
+    liveProducts.slice(0, 8);
+
+  const trendingProducts =
+    liveProducts.slice(8, 16);
+
+  const electronicsProducts =
+    liveProducts.filter(
+      (item) =>
+        item.category ===
+        "Electronics"
+    ).slice(0, 8);
+
+  const homeCategoryProducts =
+    liveProducts.filter(
+      (item) =>
+        item.category === "Home"
+    ).slice(0, 8);
+
+  const dealProducts =
+    liveProducts
+      .filter(
+        (item) =>
+          item.oldPrice >
+          item.price
+      )
+      .slice(0, 8);
+
   return (
     <>
       <style jsx global>{`
@@ -423,7 +834,10 @@ export default function Home() {
           margin: 0;
           background: #f7f7f5;
           color: #171717;
-          font-family: Arial, Helvetica, sans-serif;
+          font-family:
+            Arial,
+            Helvetica,
+            sans-serif;
         }
 
         button,
@@ -439,9 +853,15 @@ export default function Home() {
           position: sticky;
           top: 0;
           z-index: 100;
-          background: rgba(255, 255, 255, 0.97);
+          background: rgba(
+            255,
+            255,
+            255,
+            0.97
+          );
           backdrop-filter: blur(12px);
-          border-bottom: 1px solid #e8e8e8;
+          border-bottom:
+            1px solid #e8e8e8;
         }
 
         .header-main {
@@ -509,6 +929,10 @@ export default function Home() {
           font-size: 21px;
         }
 
+        .search button:disabled {
+          opacity: 0.65;
+        }
+
         .header-links {
           display: flex;
           align-items: center;
@@ -547,7 +971,8 @@ export default function Home() {
         }
 
         .nav {
-          border-top: 1px solid #eeeeee;
+          border-top:
+            1px solid #eeeeee;
           background: white;
           overflow-x: auto;
         }
@@ -572,7 +997,8 @@ export default function Home() {
 
         .nav button.active {
           color: #111;
-          box-shadow: inset 0 -2px #111;
+          box-shadow:
+            inset 0 -2px #111;
         }
 
         .container {
@@ -615,7 +1041,11 @@ export default function Home() {
 
         .hero h1 {
           margin: 13px 0 16px;
-          font-size: clamp(42px, 5vw, 68px);
+          font-size: clamp(
+            42px,
+            5vw,
+            68px
+          );
           line-height: 0.96;
           letter-spacing: -4px;
         }
@@ -644,7 +1074,14 @@ export default function Home() {
           right: -100px;
           top: -55px;
           border-radius: 50%;
-          border: 95px solid rgba(255, 255, 255, 0.055);
+          border:
+            95px solid
+            rgba(
+              255,
+              255,
+              255,
+              0.055
+            );
         }
 
         .hero-shape:after {
@@ -652,7 +1089,14 @@ export default function Home() {
           position: absolute;
           inset: 45px;
           border-radius: 50%;
-          border: 1px solid rgba(255, 255, 255, 0.09);
+          border:
+            1px solid
+            rgba(
+              255,
+              255,
+              255,
+              0.09
+            );
         }
 
         .section {
@@ -678,33 +1122,43 @@ export default function Home() {
           font-size: 13px;
         }
 
-        .view-all {
-          border: 0;
-          background: transparent;
+        .section-count {
+          color: #777;
+          font-size: 12px;
           font-weight: 800;
-          font-size: 13px;
         }
 
         .products {
           display: grid;
-          grid-template-columns: repeat(
-            4,
-            minmax(0, 1fr)
-          );
+          grid-template-columns:
+            repeat(
+              4,
+              minmax(0, 1fr)
+            );
           gap: 18px;
         }
 
         .card {
           background: white;
-          border: 1px solid #e5e5e5;
+          border:
+            1px solid #e5e5e5;
           border-radius: 11px;
           overflow: hidden;
-          transition: 0.2s ease;
+          transition:
+            0.2s ease;
         }
 
         .card:hover {
-          transform: translateY(-3px);
-          box-shadow: 0 14px 35px rgba(0, 0, 0, 0.08);
+          transform:
+            translateY(-3px);
+          box-shadow:
+            0 14px 35px
+            rgba(
+              0,
+              0,
+              0,
+              0.08
+            );
         }
 
         .photo-button {
@@ -728,11 +1182,15 @@ export default function Home() {
           height: 100%;
           object-fit: cover;
           display: block;
-          transition: transform 0.3s ease;
+          transition:
+            transform 0.3s ease;
         }
 
-        .card:hover .photo img {
-          transform: scale(1.035);
+        .card:hover
+          .photo
+          img {
+          transform:
+            scale(1.035);
         }
 
         .badge {
@@ -746,11 +1204,19 @@ export default function Home() {
           font-weight: 900;
           text-transform: uppercase;
           letter-spacing: 0.7px;
-          box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+          box-shadow:
+            0 3px 10px
+            rgba(
+              0,
+              0,
+              0,
+              0.08
+            );
         }
 
         .info {
-          padding: 16px 16px 10px;
+          padding: 16px
+            16px 10px;
         }
 
         .category {
@@ -799,13 +1265,16 @@ export default function Home() {
 
         .actions {
           display: grid;
-          grid-template-columns: 1fr 1fr;
+          grid-template-columns:
+            1fr 1fr;
           gap: 8px;
-          padding: 6px 16px 16px;
+          padding: 6px
+            16px 16px;
         }
 
         .actions button,
-        .detail-actions button {
+        .detail-actions
+          button {
           height: 42px;
           border-radius: 6px;
           font-size: 12px;
@@ -813,13 +1282,15 @@ export default function Home() {
         }
 
         .add {
-          border: 1px solid #bdbdbd;
+          border:
+            1px solid #bdbdbd;
           background: white;
           color: #111;
         }
 
         .buy {
-          border: 1px solid #111;
+          border:
+            1px solid #111;
           background: #111;
           color: white;
         }
@@ -834,11 +1305,13 @@ export default function Home() {
 
         .promo {
           display: grid;
-          grid-template-columns: repeat(3, 1fr);
+          grid-template-columns:
+            repeat(3, 1fr);
           gap: 1px;
           margin-top: 42px;
           background: #dedede;
-          border: 1px solid #dedede;
+          border:
+            1px solid #dedede;
           border-radius: 11px;
           overflow: hidden;
         }
@@ -862,7 +1335,8 @@ export default function Home() {
 
         .detail {
           background: white;
-          border: 1px solid #e3e3e3;
+          border:
+            1px solid #e3e3e3;
           border-radius: 12px;
           overflow: hidden;
         }
@@ -878,7 +1352,8 @@ export default function Home() {
 
         .detail-grid {
           display: grid;
-          grid-template-columns: 1fr 1fr;
+          grid-template-columns:
+            1fr 1fr;
         }
 
         .detail-photo {
@@ -912,8 +1387,10 @@ export default function Home() {
 
         .description {
           padding: 24px 0;
-          border-top: 1px solid #e5e5e5;
-          border-bottom: 1px solid #e5e5e5;
+          border-top:
+            1px solid #e5e5e5;
+          border-bottom:
+            1px solid #e5e5e5;
           color: #555;
           line-height: 1.7;
           font-size: 14px;
@@ -925,18 +1402,21 @@ export default function Home() {
 
         .detail-actions {
           display: grid;
-          grid-template-columns: 1fr 1fr;
+          grid-template-columns:
+            1fr 1fr;
           gap: 10px;
           margin-top: 25px;
         }
 
-        .detail-actions button {
+        .detail-actions
+          button {
           height: 52px;
         }
 
         .cart-page {
           background: white;
-          border: 1px solid #e4e4e4;
+          border:
+            1px solid #e4e4e4;
           border-radius: 12px;
           padding: 30px;
         }
@@ -951,7 +1431,8 @@ export default function Home() {
           display: flex;
           gap: 17px;
           padding: 20px 0;
-          border-bottom: 1px solid #e7e7e7;
+          border-bottom:
+            1px solid #e7e7e7;
         }
 
         .cart-item img {
@@ -975,7 +1456,8 @@ export default function Home() {
         .quantity button {
           width: 30px;
           height: 30px;
-          border: 1px solid #d2d2d2;
+          border:
+            1px solid #d2d2d2;
           background: white;
           border-radius: 5px;
           font-weight: 900;
@@ -1018,7 +1500,8 @@ export default function Home() {
         .supplier-status {
           margin: 0 0 18px;
           padding: 13px 15px;
-          border: 1px solid #e3e3e3;
+          border:
+            1px solid #e3e3e3;
           border-radius: 8px;
           background: white;
           color: #666;
@@ -1052,15 +1535,17 @@ export default function Home() {
         }
 
         @media (max-width: 1100px) {
-          .header-links .header-link {
+          .header-links
+            .header-link {
             display: none;
           }
 
           .products {
-            grid-template-columns: repeat(
-              3,
-              minmax(0, 1fr)
-            );
+            grid-template-columns:
+              repeat(
+                3,
+                minmax(0, 1fr)
+              );
           }
         }
 
@@ -1104,32 +1589,38 @@ export default function Home() {
           }
 
           .products {
-            grid-template-columns: repeat(
-              2,
-              minmax(0, 1fr)
-            );
+            grid-template-columns:
+              repeat(
+                2,
+                minmax(0, 1fr)
+              );
             gap: 10px;
           }
 
           .info {
-            padding: 12px 11px 7px;
+            padding: 12px
+              11px 7px;
           }
 
           .actions {
-            padding: 5px 11px 11px;
+            padding: 5px
+              11px 11px;
             gap: 5px;
           }
 
           .promo {
-            grid-template-columns: 1fr;
+            grid-template-columns:
+              1fr;
           }
 
           .detail-grid {
-            grid-template-columns: 1fr;
+            grid-template-columns:
+              1fr;
           }
 
           .detail-photo,
-          .detail-photo img {
+          .detail-photo
+            img {
             min-height: 380px;
           }
 
@@ -1143,6 +1634,15 @@ export default function Home() {
 
           .cart-page {
             padding: 18px;
+          }
+
+          .cart-item {
+            align-items: flex-start;
+          }
+
+          .cart-item img {
+            width: 80px;
+            height: 80px;
           }
         }
       `}</style>
@@ -1182,9 +1682,13 @@ export default function Home() {
             <button
               type="submit"
               aria-label="Search"
-              disabled={searchingSupplier}
+              disabled={
+                searchingSupplier
+              }
             >
-              {searchingSupplier ? "…" : "⌕"}
+              {searchingSupplier
+                ? "…"
+                : "⌕"}
             </button>
           </form>
 
@@ -1204,374 +1708,346 @@ export default function Home() {
                 setProduct(null);
               }}
             >
-              Cart <span>{cartCount}</span>
+              Cart{" "}
+              <span>
+                {cartCount}
+              </span>
             </button>
           </div>
         </div>
 
         <nav className="nav">
           <div className="nav-inner">
-            {categories.map((item) => (
-              <button
-                key={item}
-                className={
-                  category === item
-                    ? "active"
-                    : ""
-                }
-                onClick={() => {
-                  setCategory(item);
-                  setProduct(null);
-                  setCartOpen(false);
-
-                  if (item === "All") {
+            {categories.map(
+              (item) => (
+                <button
+                  key={item}
+                  className={
+                    category === item
+                      ? "active"
+                      : ""
+                  }
+                  onClick={() => {
+                    setCategory(item);
+                    setProduct(null);
+                    setCartOpen(false);
                     setSearch("");
                     setSupplierProducts([]);
                     setSupplierError("");
-                  }
-                }}
-              >
-                {item}
-              </button>
-            ))}
+                  }}
+                >
+                  {item}
+                </button>
+              )
+            )}
           </div>
         </nav>
       </header>
 
       <main className="container">
-        {!product && !cartOpen && (
-          <>
-            {!search &&
-              category === "All" &&
-              supplierProducts.length === 0 && (
-                <section className="hero">
-                  <div className="hero-content">
-                    <div className="hero-kicker">
-                      Welcome to Marlow
+        {!product &&
+          !cartOpen && (
+            <>
+              {!search &&
+                category ===
+                  "All" && (
+                  <section className="hero">
+                    <div className="hero-content">
+                      <div className="hero-kicker">
+                        Welcome to Marlow
+                      </div>
+
+                      <h1>
+                        Shopping made
+                        <br />
+                        beautifully simple.
+                      </h1>
+
+                      <p>
+                        Discover products
+                        you'll love,
+                        find what you're
+                        looking for,
+                        and shop
+                        everything from
+                        one place.
+                      </p>
+
+                      <button
+                        className="hero-action"
+                        onClick={() =>
+                          document
+                            .getElementById(
+                              "featured"
+                            )
+                            ?.scrollIntoView(
+                              {
+                                behavior:
+                                  "smooth",
+                              }
+                            )
+                        }
+                      >
+                        Explore Products
+                      </button>
                     </div>
 
-                    <h1>
-                      Shopping made
-                      <br />
-                      beautifully simple.
-                    </h1>
+                    <div className="hero-shape" />
+                  </section>
+                )}
 
-                    <p>
-                      Discover products you'll
-                      love, find what you're looking
-                      for, and shop everything from
-                      one place.
-                    </p>
+              {search ? (
+                <section
+                  className="section"
+                  id="search-results"
+                >
+                  <div className="section-head">
+                    <div>
+                      <h2>
+                        Search results
+                        for "
+                        {search}"
+                      </h2>
 
-                    <button
-                      className="hero-action"
-                      onClick={() =>
-                        document
-                          .getElementById(
-                            "recommended"
-                          )
-                          ?.scrollIntoView({
-                            behavior: "smooth",
-                          })
-                      }
-                    >
-                      Explore Products
-                    </button>
+                      <p>
+                        Products matching
+                        your search
+                      </p>
+                    </div>
+
+                    <span className="section-count">
+                      {
+                        filtered.length
+                      }{" "}
+                      products
+                    </span>
                   </div>
 
-                  <div className="hero-shape" />
-                </section>
-              )}
-
-            <section
-              className="section"
-              id="recommended"
-            >
-              <div className="section-head">
-                <div>
-                  <h2>
-                    {search
-                      ? `Search results for "${search}"`
-                      : category !== "All"
-                        ? category
-                        : "Recommended for You"}
-                  </h2>
-
-                  <p>
-                    {search
-                      ? searchingSupplier
-                        ? "Searching Marlow's supplier catalog..."
-                        : "Products matching your search"
-                      : "Popular products selected for Marlow shoppers"}
-                  </p>
-                </div>
-
-                <button className="view-all">
-                  {filtered.length} products
-                </button>
-              </div>
-
-              {supplierError && (
-                <div className="supplier-status supplier-error">
-                  {supplierError}
-                </div>
-              )}
-
-              {searchingSupplier && (
-                <div className="supplier-status">
-                  Searching the CJ supplier catalog...
-                </div>
-              )}
-
-              {filtered.length === 0 &&
-              !searchingSupplier ? (
-                <div className="empty">
-                  <h2>
-                    We couldn't find that item.
-                  </h2>
-
-                  <p>
-                    Try another search. Marlow is
-                    checking the connected supplier
-                    catalog for available products.
-                  </p>
-                </div>
-              ) : (
-                <div className="products">
-                  {filtered.map((item) => (
-                    <article
-                      className="card"
-                      key={item.id}
-                    >
-                      <button
-                        className="photo-button"
-                        onClick={() => {
-                          setProduct(item);
-                          window.scrollTo({
-                            top: 0,
-                          });
-                        }}
-                      >
-                        <div className="photo">
-                          <img
-                            src={item.image}
-                            alt={item.name}
-                          />
-
-                          <span className="badge">
-                            {item.badge}
-                          </span>
-                        </div>
-
-                        <div className="info">
-                          <div className="category">
-                            {item.category}
-                          </div>
-
-                          <div className="name">
-                            {item.name}
-                          </div>
-
-                          <div className="rating">
-                            <span className="stars">
-                              ★★★★★
-                            </span>{" "}
-                            {item.rating}{" "}
-                            {item.reviews > 0 &&
-                              `(${item.reviews.toLocaleString()})`}
-                          </div>
-
-                          <div className="price-row">
-                            <span className="price">
-                              $
-                              {item.price.toFixed(
-                                2
-                              )}
-                            </span>
-
-                            <span className="old">
-                              $
-                              {item.oldPrice.toFixed(
-                                2
-                              )}
-                            </span>
-                          </div>
-                        </div>
-                      </button>
-
-                      <div className="actions">
-                        <button
-                          className="add"
-                          onClick={() =>
-                            addToCart(item)
-                          }
-                        >
-                          Add to Cart
-                        </button>
-
-                        <button
-                          className="buy"
-                          onClick={() =>
-                            buyNow(item)
-                          }
-                        >
-                          Buy Now
-                        </button>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              )}
-            </section>
-
-            {!search &&
-              category === "All" &&
-              supplierProducts.length === 0 && (
-                <>
-                  <section className="section">
-                    <div className="section-head">
-                      <div>
-                        <h2>Trending Now</h2>
-                        <p>
-                          Popular picks shoppers are
-                          checking out
-                        </p>
-                      </div>
+                  {supplierError && (
+                    <div className="supplier-status supplier-error">
+                      {
+                        supplierError
+                      }
                     </div>
+                  )}
 
+                  {searchingSupplier && (
+                    <div className="supplier-status">
+                      Searching the
+                      CJ supplier
+                      catalog...
+                    </div>
+                  )}
+
+                  {filtered.length ===
+                    0 &&
+                  !searchingSupplier ? (
+                    <div className="empty">
+                      <h2>
+                        We couldn't
+                        find that
+                        item.
+                      </h2>
+
+                      <p>
+                        Try another
+                        search.
+                      </p>
+                    </div>
+                  ) : (
                     <div className="products">
-                      {demoProducts
-                        .slice(4, 8)
-                        .map((item) => (
-                          <article
-                            className="card"
-                            key={item.id}
-                          >
-                            <button
-                              className="photo-button"
-                              onClick={() => {
-                                setProduct(item);
-                                window.scrollTo({
-                                  top: 0,
-                                });
-                              }}
-                            >
-                              <div className="photo">
-                                <img
-                                  src={item.image}
-                                  alt={item.name}
-                                />
-
-                                <span className="badge">
-                                  {item.badge}
-                                </span>
-                              </div>
-
-                              <div className="info">
-                                <div className="category">
-                                  {item.category}
-                                </div>
-
-                                <div className="name">
-                                  {item.name}
-                                </div>
-
-                                <div className="rating">
-                                  <span className="stars">
-                                    ★★★★★
-                                  </span>{" "}
-                                  {item.rating} (
-                                  {item.reviews.toLocaleString()}
-                                  )
-                                </div>
-
-                                <div className="price-row">
-                                  <span className="price">
-                                    $
-                                    {item.price.toFixed(
-                                      2
-                                    )}
-                                  </span>
-
-                                  <span className="old">
-                                    $
-                                    {item.oldPrice.toFixed(
-                                      2
-                                    )}
-                                  </span>
-                                </div>
-                              </div>
-                            </button>
-
-                            <div className="actions">
-                              <button
-                                className="add"
-                                onClick={() =>
-                                  addToCart(item)
-                                }
-                              >
-                                Add to Cart
-                              </button>
-
-                              <button
-                                className="buy"
-                                onClick={() =>
-                                  buyNow(item)
-                                }
-                              >
-                                Buy Now
-                              </button>
-                            </div>
-                          </article>
-                        ))}
+                      {filtered.map(
+                        (item) => (
+                          <ProductCard
+                            key={
+                              item.id
+                            }
+                            item={item}
+                            addToCart={
+                              addToCart
+                            }
+                            buyNow={
+                              buyNow
+                            }
+                            openProduct={
+                              openProduct
+                            }
+                          />
+                        )
+                      )}
                     </div>
-                  </section>
+                  )}
+                </section>
+              ) : (
+                <>
+                  <div id="featured">
+                    <ProductSection
+                      title="Featured Products"
+                      subtitle="Products selected to catch your eye"
+                      products={
+                        featuredProducts
+                      }
+                      addToCart={
+                        addToCart
+                      }
+                      buyNow={buyNow}
+                      openProduct={
+                        openProduct
+                      }
+                    />
+                  </div>
+
+                  <ProductSection
+                    title="Trending Now"
+                    subtitle="Popular picks shoppers are checking out"
+                    products={
+                      trendingProducts
+                    }
+                    addToCart={
+                      addToCart
+                    }
+                    buyNow={buyNow}
+                    openProduct={
+                      openProduct
+                    }
+                  />
+
+                  {electronicsProducts.length >
+                    0 && (
+                    <ProductSection
+                      title="Electronics"
+                      subtitle="Popular electronics and everyday tech"
+                      products={
+                        electronicsProducts
+                      }
+                      addToCart={
+                        addToCart
+                      }
+                      buyNow={
+                        buyNow
+                      }
+                      openProduct={
+                        openProduct
+                      }
+                    />
+                  )}
+
+                  {homeCategoryProducts.length >
+                    0 && (
+                    <ProductSection
+                      title="Home & Kitchen"
+                      subtitle="Products to make your home better"
+                      products={
+                        homeCategoryProducts
+                      }
+                      addToCart={
+                        addToCart
+                      }
+                      buyNow={
+                        buyNow
+                      }
+                      openProduct={
+                        openProduct
+                      }
+                    />
+                  )}
+
+                  {dealProducts.length >
+                    0 && (
+                    <ProductSection
+                      title="Marlow Deals"
+                      subtitle="Products with room for a great deal"
+                      products={
+                        dealProducts
+                      }
+                      addToCart={
+                        addToCart
+                      }
+                      buyNow={
+                        buyNow
+                      }
+                      openProduct={
+                        openProduct
+                      }
+                    />
+                  )}
+
+                  {loadingHomeProducts && (
+                    <div className="supplier-status">
+                      Loading more
+                      products from
+                      the connected
+                      supplier catalog...
+                    </div>
+                  )}
+
+                  {homeError && (
+                    <div className="supplier-status supplier-error">
+                      {homeError}
+                    </div>
+                  )}
 
                   <section className="promo">
                     <div className="promo-item">
                       <div className="promo-title">
-                        A growing marketplace
+                        A growing
+                        marketplace
                       </div>
 
                       <div className="promo-text">
-                        Built to expand into a massive
-                        product catalog.
+                        Marlow is
+                        designed to
+                        grow into a
+                        large product
+                        catalog.
                       </div>
                     </div>
 
                     <div className="promo-item">
                       <div className="promo-title">
-                        Easy product discovery
+                        Shop without
+                        searching
+                        forever
                       </div>
 
                       <div className="promo-text">
-                        Search, explore recommendations,
-                        and open products for more
-                        information.
+                        Featured,
+                        trending,
+                        category, and
+                        deal sections
+                        help customers
+                        discover
+                        products.
                       </div>
                     </div>
 
                     <div className="promo-item">
                       <div className="promo-title">
-                        Simple shopping
+                        Smart Marlow
+                        pricing
                       </div>
 
                       <div className="promo-text">
-                        Add products to your cart or
-                        choose Buy Now.
+                        Supplier costs
+                        are converted
+                        into Marlow
+                        selling prices
+                        automatically.
                       </div>
                     </div>
                   </section>
                 </>
               )}
-          </>
-        )}
+            </>
+          )}
 
         {product && (
           <>
             <button
               className="back"
-              onClick={() => setProduct(null)}
+              onClick={() =>
+                setProduct(null)
+              }
             >
               ← Back to shopping
             </button>
@@ -1587,40 +2063,63 @@ export default function Home() {
 
                 <div className="detail-info">
                   <div className="category">
-                    {product.category}
+                    {
+                      product.category
+                    }
                   </div>
 
-                  <h1>{product.name}</h1>
+                  <h1>
+                    {product.name}
+                  </h1>
 
                   <div className="rating">
                     <span className="stars">
                       ★★★★★
                     </span>{" "}
-                    {product.rating} ·{" "}
-                    {product.reviews > 0
+                    {
+                      product.rating
+                    }{" "}
+                    ·{" "}
+                    {product.reviews >
+                    0
                       ? `${product.reviews.toLocaleString()} reviews`
                       : "Supplier catalog product"}
                   </div>
 
                   <div className="detail-price">
-                    ${product.price.toFixed(2)}
+                    $
+                    {product.price.toFixed(
+                      2
+                    )}
                   </div>
 
                   <div className="description">
                     <strong>
-                      Product information
+                      Product
+                      information
                     </strong>
 
                     <p>
-                      {product.description}
+                      {
+                        product.description
+                      }
                     </p>
 
-                    {product.supplierCost > 0 && (
+                    {product.supplierCost >
+                      0 && (
                       <p>
-                        Marlow automatically calculated
-                        this selling price from the
-                        supplier cost while maintaining
-                        at least $1 gross profit.
+                        Marlow's
+                        automatic
+                        pricing
+                        system
+                        calculates the
+                        selling price
+                        from the
+                        supplier cost
+                        while
+                        maintaining at
+                        least $1 gross
+                        profit.
                       </p>
                     )}
                   </div>
@@ -1629,7 +2128,9 @@ export default function Home() {
                     <button
                       className="add"
                       onClick={() =>
-                        addToCart(product)
+                        addToCart(
+                          product
+                        )
                       }
                     >
                       Add to Cart
@@ -1638,7 +2139,9 @@ export default function Home() {
                     <button
                       className="buy"
                       onClick={() =>
-                        buyNow(product)
+                        buyNow(
+                          product
+                        )
                       }
                     >
                       Buy Now
@@ -1662,7 +2165,9 @@ export default function Home() {
             </button>
 
             <section className="cart-page">
-              <h1>Your Cart</h1>
+              <h1>
+                Your Cart
+              </h1>
 
               <p
                 style={{
@@ -1671,107 +2176,134 @@ export default function Home() {
                 }}
               >
                 {cartCount}{" "}
-                {cartCount === 1
+                {cartCount ===
+                1
                   ? "item"
                   : "items"}
               </p>
 
-              {cart.length === 0 ? (
+              {cart.length ===
+              0 ? (
                 <div className="empty">
                   <h2>
-                    Your cart is empty.
+                    Your cart is
+                    empty.
                   </h2>
 
                   <p>
-                    Add something you love and
-                    it'll appear here.
+                    Add something
+                    you love and
+                    it'll appear
+                    here.
                   </p>
                 </div>
               ) : (
                 <>
-                  {cart.map((item) => (
-                    <div
-                      className="cart-item"
-                      key={item.id}
-                    >
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                      />
+                  {cart.map(
+                    (item) => (
+                      <div
+                        className="cart-item"
+                        key={
+                          item.id
+                        }
+                      >
+                        <img
+                          src={
+                            item.image
+                          }
+                          alt={
+                            item.name
+                          }
+                        />
 
-                      <div className="cart-item-main">
-                        <strong>
-                          {item.name}
-                        </strong>
-
-                        <p
-                          style={{
-                            color: "#777",
-                            fontSize: 13,
-                          }}
-                        >
-                          {item.category}
-                        </p>
-
-                        <strong>
-                          ${item.price.toFixed(2)}
-                        </strong>
-
-                        <div className="quantity">
-                          <button
-                            onClick={() =>
-                              updateQuantity(
-                                item.id,
-                                -1
-                              )
-                            }
-                          >
-                            −
-                          </button>
-
+                        <div className="cart-item-main">
                           <strong>
-                            {item.quantity}
+                            {
+                              item.name
+                            }
                           </strong>
 
-                          <button
-                            onClick={() =>
-                              updateQuantity(
-                                item.id,
-                                1
-                              )
-                            }
+                          <p
+                            style={{
+                              color:
+                                "#777",
+                              fontSize:
+                                13,
+                            }}
                           >
-                            +
-                          </button>
+                            {
+                              item.category
+                            }
+                          </p>
 
-                          <button
-                            className="remove"
-                            onClick={() =>
-                              updateQuantity(
-                                item.id,
-                                -item.quantity
-                              )
-                            }
-                          >
-                            Remove
-                          </button>
+                          <strong>
+                            $
+                            {item.price.toFixed(
+                              2
+                            )}
+                          </strong>
+
+                          <div className="quantity">
+                            <button
+                              onClick={() =>
+                                updateQuantity(
+                                  item.id,
+                                  -1
+                                )
+                              }
+                            >
+                              −
+                            </button>
+
+                            <strong>
+                              {
+                                item.quantity
+                              }
+                            </strong>
+
+                            <button
+                              onClick={() =>
+                                updateQuantity(
+                                  item.id,
+                                  1
+                                )
+                              }
+                            >
+                              +
+                            </button>
+
+                            <button
+                              className="remove"
+                              onClick={() =>
+                                updateQuantity(
+                                  item.id,
+                                  -item.quantity
+                                )
+                              }
+                            >
+                              Remove
+                            </button>
+                          </div>
                         </div>
-                      </div>
 
-                      <strong>
-                        $
-                        {(
-                          item.price *
-                          item.quantity
-                        ).toFixed(2)}
-                      </strong>
-                    </div>
-                  ))}
+                        <strong>
+                          $
+                          {(
+                            item.price *
+                            item.quantity
+                          ).toFixed(
+                            2
+                          )}
+                        </strong>
+                      </div>
+                    )
+                  )}
 
                   <div className="summary">
                     <div
                       style={{
-                        display: "flex",
+                        display:
+                          "flex",
                         justifyContent:
                           "space-between",
                         fontSize: 18,
@@ -1782,7 +2314,10 @@ export default function Home() {
                       </strong>
 
                       <strong>
-                        ${cartTotal.toFixed(2)}
+                        $
+                        {cartTotal.toFixed(
+                          2
+                        )}
                       </strong>
                     </div>
 
@@ -1790,11 +2325,12 @@ export default function Home() {
                       className="checkout"
                       onClick={() =>
                         alert(
-                          "Checkout, customer accounts, tax, shipping, payment processing, and automatic CJ order submission will be connected in the next stage."
+                          "Checkout will be connected to customer accounts, tax, shipping, secure payment processing, and automatic CJ order fulfillment in the next build stage."
                         )
                       }
                     >
-                      Proceed to Checkout
+                      Proceed to
+                      Checkout
                     </button>
                   </div>
                 </>
@@ -1817,9 +2353,12 @@ export default function Home() {
             </div>
 
             <div className="footer-copy">
-              A modern shopping destination being
-              built to make product discovery simple,
-              convenient, and personal.
+              A modern shopping
+              destination being
+              built to make product
+              discovery simple,
+              convenient, and
+              personal.
             </div>
           </div>
 
