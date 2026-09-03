@@ -2,9 +2,50 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-const demoProducts = [
+/*
+  MARLOW STOREFRONT
+
+  This page:
+  - Keeps the Marlow storefront design.
+  - Loads a large selection of CJ products for browsing.
+  - Targets up to 150 homepage products.
+  - Organizes products into Marlow categories.
+  - Uses CJ search for customer searches.
+  - Removes duplicate products.
+  - Does not claim "no products" until CJ has actually been searched.
+  - Keeps the existing automatic pricing system for now.
+*/
+
+const categories = [
+  "All",
+  "Electronics",
+  "Home",
+  "Clothing",
+  "Beauty",
+  "Sports",
+  "Toys",
+  "Travel",
+  "Tools",
+];
+
+const categorySearches = [
+  "popular products",
+  "electronics",
+  "clothing",
+  "beauty",
+  "sports",
+  "toys",
+  "travel",
+  "tools",
+  "home",
+  "gadgets",
+  "accessories",
+  "daily essentials",
+];
+
+const fallbackProducts = [
   {
-    id: "demo-1",
+    id: "fallback-1",
     name: "Wireless Noise-Canceling Headphones",
     price: 89.99,
     oldPrice: 129.99,
@@ -15,11 +56,11 @@ const demoProducts = [
     image:
       "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=1000&q=90",
     description:
-      "Premium wireless headphones designed for immersive sound, comfortable all-day listening, and dependable battery life.",
+      "Premium wireless headphones designed for immersive sound and comfortable everyday listening.",
     demo: true,
   },
   {
-    id: "demo-2",
+    id: "fallback-2",
     name: "Premium Smart Watch",
     price: 79.99,
     oldPrice: 119.99,
@@ -30,11 +71,11 @@ const demoProducts = [
     image:
       "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=1000&q=90",
     description:
-      "A modern smartwatch with activity tracking, notifications, and an elegant everyday design.",
+      "A modern smartwatch with activity tracking and everyday notifications.",
     demo: true,
   },
   {
-    id: "demo-3",
+    id: "fallback-3",
     name: "Insulated Stainless Steel Bottle",
     price: 29.99,
     oldPrice: 39.99,
@@ -45,11 +86,11 @@ const demoProducts = [
     image:
       "https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&w=1000&q=90",
     description:
-      "Durable insulated bottle designed to keep drinks cold or hot throughout the day.",
+      "Durable insulated bottle designed for hot and cold drinks.",
     demo: true,
   },
   {
-    id: "demo-4",
+    id: "fallback-4",
     name: "Portable Wireless Speaker",
     price: 44.99,
     oldPrice: 59.99,
@@ -60,11 +101,11 @@ const demoProducts = [
     image:
       "https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?auto=format&fit=crop&w=1000&q=90",
     description:
-      "Compact wireless speaker with rich audio and a portable design made for home or travel.",
+      "Compact wireless speaker with rich audio and portable design.",
     demo: true,
   },
   {
-    id: "demo-5",
+    id: "fallback-5",
     name: "Modern LED Desk Lamp",
     price: 34.99,
     oldPrice: 49.99,
@@ -75,11 +116,11 @@ const demoProducts = [
     image:
       "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=1000&q=90",
     description:
-      "Clean modern lighting for desks, bedrooms, offices, studying, and everyday use.",
+      "Clean modern lighting for desks, bedrooms, offices, and studying.",
     demo: true,
   },
   {
-    id: "demo-6",
+    id: "fallback-6",
     name: "Everyday Travel Backpack",
     price: 54.99,
     oldPrice: 74.99,
@@ -94,7 +135,7 @@ const demoProducts = [
     demo: true,
   },
   {
-    id: "demo-7",
+    id: "fallback-7",
     name: "Ultra Soft Home Throw",
     price: 39.99,
     oldPrice: 54.99,
@@ -105,11 +146,11 @@ const demoProducts = [
     image:
       "https://images.unsplash.com/photo-1584100936595-c0654b55a2e2?auto=format&fit=crop&w=1000&q=90",
     description:
-      "A soft, comfortable throw designed to add warmth and style to your living space.",
+      "A soft comfortable throw designed to add warmth and style to your home.",
     demo: true,
   },
   {
-    id: "demo-8",
+    id: "fallback-8",
     name: "Kitchen Organization Collection",
     price: 31.99,
     oldPrice: 44.99,
@@ -120,60 +161,55 @@ const demoProducts = [
     image:
       "https://images.unsplash.com/photo-1556911220-bff31c812dba?auto=format&fit=crop&w=1000&q=90",
     description:
-      "Practical organization pieces designed to make everyday kitchen storage easier.",
+      "Practical organization pieces designed to make kitchen storage easier.",
     demo: true,
   },
 ];
 
-const categories = [
-  "All",
-  "Electronics",
-  "Home",
-  "Clothing",
-  "Beauty",
-  "Sports",
-  "Toys",
-  "Travel",
-  "Tools",
-];
-
 function getSupplierName(item) {
   return (
-    item.productName ||
-    item.nameEn ||
-    item.name ||
-    item.title ||
-    item.productTitle ||
+    item?.productName ||
+    item?.nameEn ||
+    item?.name ||
+    item?.title ||
+    item?.productTitle ||
     "Supplier Product"
-  );
+  )
+    .toString()
+    .trim();
 }
 
 function getSupplierImage(item) {
   return (
-    item.bigImage ||
-    item.productImage ||
-    item.productImageUrl ||
-    item.image ||
-    item.imageUrl ||
-    item.img ||
+    item?.bigImage ||
+    item?.productImage ||
+    item?.productImageUrl ||
+    item?.image ||
+    item?.imageUrl ||
+    item?.img ||
     ""
-  );
+  )
+    .toString()
+    .trim();
 }
 
 function getSupplierCost(item) {
-  const possibleValues = [
-    item.nowPrice,
-    item.sellPrice,
-    item.productPrice,
-    item.price,
-    item.minPrice,
-    item.costPrice,
+  const values = [
+    item?.nowPrice,
+    item?.sellPrice,
+    item?.productPrice,
+    item?.price,
+    item?.minPrice,
+    item?.costPrice,
   ];
 
-  for (const value of possibleValues) {
+  for (const value of values) {
     const number = Number(value);
 
-    if (Number.isFinite(number) && number > 0) {
+    if (
+      Number.isFinite(number) &&
+      number > 0
+    ) {
       return number;
     }
   }
@@ -182,17 +218,19 @@ function getSupplierCost(item) {
 }
 
 /*
-  Marlow automatic pricing.
+  Current Marlow pricing rule.
 
-  Goal:
-  - Never make less than $1 gross profit.
-  - Use a larger percentage markup on lower-cost products.
-  - Use a smaller percentage markup on expensive products.
+  This remains in place while we finish
+  the catalog. We will make the pricing
+  smarter in the next pricing pass.
 */
 function calculateMarlowPrice(cost) {
   const numericCost = Number(cost);
 
-  if (!Number.isFinite(numericCost) || numericCost <= 0) {
+  if (
+    !Number.isFinite(numericCost) ||
+    numericCost <= 0
+  ) {
     return 0;
   }
 
@@ -212,66 +250,175 @@ function calculateMarlowPrice(cost) {
     markup = 0.10;
   }
 
-  const percentagePrice = numericCost * (1 + markup);
-  const minimumProfitPrice = numericCost + 1;
-
   return Math.max(
-    percentagePrice,
-    minimumProfitPrice
+    numericCost * (1 + markup),
+    numericCost + 1
   );
 }
 
-function convertSupplierProduct(item, index) {
-  const cost = getSupplierCost(item);
-  const sellingPrice = calculateMarlowPrice(cost);
-  const image = getSupplierImage(item);
+function inferCategory(item) {
+  const raw = [
+    item?.categoryName,
+    item?.categoryNameEn,
+    item?.category,
+    item?.productName,
+    item?.nameEn,
+    item?.name,
+    item?.title,
+    item?.productTitle,
+    item?.description,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  if (
+    /phone|iphone|android|charger|cable|headphone|earbud|speaker|tablet|computer|laptop|keyboard|mouse|watch|camera|electronic|gaming|usb|bluetooth|power bank|projector|monitor/.test(
+      raw
+    )
+  ) {
+    return "Electronics";
+  }
+
+  if (
+    /shirt|t-shirt|tshirt|hoodie|jacket|coat|dress|jean|pants|shorts|sock|shoe|sneaker|boot|clothing|apparel|hat|cap|fashion/.test(
+      raw
+    )
+  ) {
+    return "Clothing";
+  }
+
+  if (
+    /makeup|cosmetic|lipstick|mascara|foundation|skincare|skin care|serum|cream|beauty|hair|shampoo|conditioner|brush|perfume|fragrance|nail/.test(
+      raw
+    )
+  ) {
+    return "Beauty";
+  }
+
+  if (
+    /football|basketball|baseball|soccer|golf|tennis|fitness|gym|exercise|yoga|sport|sports|workout|athletic|camping|hiking/.test(
+      raw
+    )
+  ) {
+    return "Sports";
+  }
+
+  if (
+    /toy|kids|kid|child|children|puzzle|doll|remote control|building block|plush|stuffed|game|educational/.test(
+      raw
+    )
+  ) {
+    return "Toys";
+  }
+
+  if (
+    /travel|luggage|suitcase|backpack|passport|neck pillow|travel bag|organizer|camping bag/.test(
+      raw
+    )
+  ) {
+    return "Travel";
+  }
+
+  if (
+    /tool|drill|screwdriver|wrench|hammer|pliers|hardware|repair|workshop|measuring|hand tool|power tool/.test(
+      raw
+    )
+  ) {
+    return "Tools";
+  }
+
+  if (
+    /home|kitchen|storage|lamp|light|blanket|pillow|bedding|furniture|bathroom|decor|organizer|cookware|utensil|garden/.test(
+      raw
+    )
+  ) {
+    return "Home";
+  }
+
+  return "Home";
+}
+
+function convertSupplierProduct(
+  item,
+  index,
+  searchTerm = ""
+) {
+  const cost =
+    getSupplierCost(item);
+
+  const sellingPrice =
+    calculateMarlowPrice(cost);
+
+  const image =
+    getSupplierImage(item);
+
+  const name =
+    getSupplierName(item);
+
+  const id =
+    item?.pid ||
+    item?.productId ||
+    item?.id ||
+    item?.sku ||
+    item?.productSku ||
+    `cj-${searchTerm}-${index}-${name}`;
 
   return {
-    id:
-      item.pid ||
-      item.productId ||
-      item.id ||
-      item.sku ||
-      `cj-${index}-${getSupplierName(item)}`,
-
-    name: getSupplierName(item),
-
+    id: String(id),
+    name,
     price: sellingPrice,
-
     oldPrice:
       sellingPrice > 0
         ? sellingPrice * 1.15
         : 0,
-
     category:
-      item.categoryName ||
-      item.categoryNameEn ||
-      item.category ||
-      "Products",
-
+      inferCategory(item),
     rating:
-      Number(item.rating) || 4.5,
-
+      Number(item?.rating) || 4.5,
     reviews:
-      Number(item.reviewCount) || 0,
-
+      Number(item?.reviewCount) || 0,
     badge: "Marlow Pick",
-
     image,
-
     description:
-      item.description ||
-      item.productDescription ||
+      item?.description ||
+      item?.productDescription ||
       "Product supplied through Marlow's authorized supplier catalog.",
-
     supplierCost: cost,
-
     supplierProduct: item,
-
     supplier: "CJ Dropshipping",
-
     demo: false,
   };
+}
+
+function uniqueProducts(products) {
+  const seen = new Set();
+  const result = [];
+
+  for (const item of products) {
+    const id =
+      String(item.id);
+
+    const nameKey =
+      item.name
+        ?.toLowerCase()
+        .replace(/\s+/g, " ")
+        .trim();
+
+    const key =
+      id !== "undefined"
+        ? `id:${id}`
+        : `name:${nameKey}`;
+
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    result.push(item);
+  }
+
+  return result;
 }
 
 function ProductCard({
@@ -284,12 +431,15 @@ function ProductCard({
     <article className="card">
       <button
         className="photo-button"
-        onClick={() => openProduct(item)}
+        onClick={() =>
+          openProduct(item)
+        }
       >
         <div className="photo">
           <img
             src={item.image}
             alt={item.name}
+            loading="lazy"
           />
 
           <span className="badge">
@@ -318,12 +468,19 @@ function ProductCard({
 
           <div className="price-row">
             <span className="price">
-              ${item.price.toFixed(2)}
+              $
+              {Number(
+                item.price
+              ).toFixed(2)}
             </span>
 
-            {item.oldPrice > 0 && (
+            {item.oldPrice >
+              item.price && (
               <span className="old">
-                ${item.oldPrice.toFixed(2)}
+                $
+                {Number(
+                  item.oldPrice
+                ).toFixed(2)}
               </span>
             )}
           </div>
@@ -333,14 +490,18 @@ function ProductCard({
       <div className="actions">
         <button
           className="add"
-          onClick={() => addToCart(item)}
+          onClick={() =>
+            addToCart(item)
+          }
         >
           Add to Cart
         </button>
 
         <button
           className="buy"
-          onClick={() => buyNow(item)}
+          onClick={() =>
+            buyNow(item)
+          }
         >
           Buy Now
         </button>
@@ -375,47 +536,76 @@ function ProductSection({
       </div>
 
       <div className="products">
-        {products.map((item) => (
-          <ProductCard
-            key={item.id}
-            item={item}
-            addToCart={addToCart}
-            buyNow={buyNow}
-            openProduct={openProduct}
-          />
-        ))}
+        {products.map(
+          (item) => (
+            <ProductCard
+              key={item.id}
+              item={item}
+              addToCart={
+                addToCart
+              }
+              buyNow={buyNow}
+              openProduct={
+                openProduct
+              }
+            />
+          )
+        )}
       </div>
     </section>
   );
 }
 
 export default function Home() {
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("All");
-
-  const [product, setProduct] = useState(null);
-
-  const [cartOpen, setCartOpen] = useState(false);
-
-  const [cart, setCart] = useState([]);
-
-  const [supplierProducts, setSupplierProducts] =
-    useState([]);
-
-  const [homeProducts, setHomeProducts] =
-    useState([]);
-
-  const [searchingSupplier, setSearchingSupplier] =
-    useState(false);
-
-  const [loadingHomeProducts, setLoadingHomeProducts] =
-    useState(false);
-
-  const [supplierError, setSupplierError] =
+  const [search, setSearch] =
     useState("");
 
-  const [homeError, setHomeError] =
-    useState("");
+  const [category, setCategory] =
+    useState("All");
+
+  const [product, setProduct] =
+    useState(null);
+
+  const [cartOpen, setCartOpen] =
+    useState(false);
+
+  const [cart, setCart] =
+    useState([]);
+
+  const [
+    supplierProducts,
+    setSupplierProducts,
+  ] = useState([]);
+
+  const [
+    homeProducts,
+    setHomeProducts,
+  ] = useState([]);
+
+  const [
+    searchingSupplier,
+    setSearchingSupplier,
+  ] = useState(false);
+
+  const [
+    loadingHomeProducts,
+    setLoadingHomeProducts,
+  ] = useState(false);
+
+  const [
+    supplierSearched,
+    setSupplierSearched,
+  ] = useState(false);
+
+  const [
+    supplierError,
+    setSupplierError,
+  ] = useState("");
+
+  const [
+    homeError,
+    setHomeError,
+  ] = useState("");
 
   const displayProducts =
     search.trim().length > 0
@@ -423,86 +613,81 @@ export default function Home() {
       : category !== "All"
         ? homeProducts.filter(
             (item) =>
-              item.category === category
+              item.category ===
+              category
           )
-        : demoProducts;
+        : homeProducts;
 
   const filtered = useMemo(() => {
-    const query = search
-      .trim()
-      .toLowerCase();
+    const query =
+      search
+        .trim()
+        .toLowerCase();
 
-    return displayProducts.filter((item) => {
-      const categoryMatch =
-        category === "All" ||
-        item.category === category;
+    return displayProducts.filter(
+      (item) => {
+        const categoryMatch =
+          category === "All" ||
+          item.category ===
+            category;
 
-      const searchMatch =
-        !query ||
-        item.name
-          .toLowerCase()
-          .includes(query) ||
-        item.category
-          .toLowerCase()
-          .includes(query) ||
-        item.description
-          .toLowerCase()
-          .includes(query);
+        const searchMatch =
+          !query ||
+          item.name
+            .toLowerCase()
+            .includes(query) ||
+          item.category
+            .toLowerCase()
+            .includes(query) ||
+          item.description
+            .toLowerCase()
+            .includes(query);
 
-      return (
-        categoryMatch && searchMatch
-      );
-    });
+        return (
+          categoryMatch &&
+          searchMatch
+        );
+      }
+    );
   }, [
     search,
     category,
     displayProducts,
   ]);
 
-  const cartCount = cart.reduce(
-    (total, item) =>
-      total + item.quantity,
-    0
-  );
-
-  const cartTotal = cart.reduce(
-    (total, item) =>
-      total +
-      item.price *
+  const cartCount =
+    cart.reduce(
+      (total, item) =>
+        total +
         item.quantity,
-    0
-  );
+      0
+    );
+
+  const cartTotal =
+    cart.reduce(
+      (total, item) =>
+        total +
+        item.price *
+          item.quantity,
+      0
+    );
 
   async function loadHomeProducts() {
-    setLoadingHomeProducts(true);
+    setLoadingHomeProducts(
+      true
+    );
     setHomeError("");
-
-    /*
-      These broad searches give the home page
-      several product groups without requiring
-      customers to search manually.
-    */
-
-    const homeSearches = [
-      "popular products",
-      "electronics",
-      "home",
-      "clothing",
-      "beauty",
-      "sports",
-      "toys",
-      "travel",
-    ];
 
     try {
       const responses =
         await Promise.allSettled(
-          homeSearches.map((term) =>
-            fetch(
-              `/api/search?q=${encodeURIComponent(
-                term
-              )}`
-            )
+          categorySearches.map(
+            (term) =>
+              fetch(
+                `/api/search?q=${encodeURIComponent(
+                  term
+                )}`
+              )
           )
         );
 
@@ -510,7 +695,8 @@ export default function Home() {
 
       for (
         let i = 0;
-        i < responses.length;
+        i <
+        responses.length;
         i++
       ) {
         const result =
@@ -523,66 +709,114 @@ export default function Home() {
           continue;
         }
 
-        if (!result.value.ok) {
+        if (
+          !result.value.ok
+        ) {
           continue;
         }
 
-        const data =
-          await result.value.json();
+        try {
+          const data =
+            await result.value.json();
 
-        const raw =
-          Array.isArray(
-            data?.products
-          )
-            ? data.products
-            : [];
+          const raw =
+            Array.isArray(
+              data?.products
+            )
+              ? data.products
+              : [];
 
-        raw.forEach(
-          (item, index) => {
-            const converted =
-              convertSupplierProduct(
-                item,
-                index
-              );
+          raw.forEach(
+            (item, index) => {
+              const converted =
+                convertSupplierProduct(
+                  item,
+                  index,
+                  categorySearches[
+                    i
+                  ]
+                );
 
-            if (
-              converted.image &&
-              converted.price > 0
-            ) {
-              allProducts.push(
-                converted
-              );
+              if (
+                converted.image &&
+                converted.price >
+                  0
+              ) {
+                allProducts.push(
+                  converted
+                );
+              }
             }
-          }
-        );
+          );
+        } catch {
+          continue;
+        }
       }
 
       const unique =
-        Array.from(
-          new Map(
-            allProducts.map(
-              (item) => [
-                item.id,
-                item,
-              ]
-            )
-          ).values()
+        uniqueProducts(
+          allProducts
+        );
+
+      /*
+        We want up to 150 different
+        real CJ products on the
+        browsing page.
+      */
+
+      const live =
+        unique.slice(
+          0,
+          150
+        );
+
+      /*
+        Only use fallback products
+        when CJ doesn't provide enough
+        usable products.
+
+        This keeps the storefront
+        from looking empty while the
+        live catalog grows.
+      */
+
+      const combined =
+        uniqueProducts([
+          ...live,
+          ...fallbackProducts,
+        ]).slice(
+          0,
+          150
         );
 
       setHomeProducts(
-        unique.slice(0, 40)
+        combined
       );
+
+      if (
+        unique.length === 0
+      ) {
+        setHomeError(
+          "The live CJ catalog did not return usable products. Marlow is showing temporary display products while the catalog connection is being expanded."
+        );
+      }
     } catch (error) {
       console.error(
         "Home catalog error:",
         error
       );
 
+      setHomeProducts(
+        fallbackProducts
+      );
+
       setHomeError(
-        "The live product sections are temporarily unavailable."
+        "The live catalog is temporarily unavailable."
       );
     } finally {
-      setLoadingHomeProducts(false);
+      setLoadingHomeProducts(
+        false
+      );
     }
   }
 
@@ -597,13 +831,23 @@ export default function Home() {
       query.trim();
 
     if (!cleanQuery) {
-      setSupplierProducts([]);
+      setSupplierProducts(
+        []
+      );
       setSupplierError("");
+      setSupplierSearched(
+        false
+      );
       return;
     }
 
-    setSearchingSupplier(true);
+    setSearchingSupplier(
+      true
+    );
     setSupplierError("");
+    setSupplierSearched(
+      false
+    );
 
     try {
       const response =
@@ -616,11 +860,23 @@ export default function Home() {
       const data =
         await response.json();
 
+      /*
+        CJ was actually searched.
+        From this point forward,
+        a zero-result response is
+        a legitimate "no products"
+        result.
+      */
+
+      setSupplierSearched(
+        true
+      );
+
       if (!response.ok) {
         throw new Error(
           data?.details ||
             data?.message ||
-            "Supplier search failed."
+            "CJ search failed."
         );
       }
 
@@ -631,10 +887,15 @@ export default function Home() {
           ? data.products
           : [];
 
-      const convertedProducts =
+      const converted =
         rawProducts
           .map(
-            convertSupplierProduct
+            (item, index) =>
+              convertSupplierProduct(
+                item,
+                index,
+                cleanQuery
+              )
           )
           .filter(
             (item) =>
@@ -643,28 +904,41 @@ export default function Home() {
           );
 
       setSupplierProducts(
-        convertedProducts
+        uniqueProducts(
+          converted
+        )
       );
 
       if (
-        convertedProducts.length ===
+        converted.length ===
         0
       ) {
         setSupplierError(
-          "CJ connected, but no usable products were returned for that search."
+          ""
         );
       }
     } catch (error) {
-      console.error(error);
+      console.error(
+        "CJ search error:",
+        error
+      );
 
-      setSupplierProducts([]);
+      setSupplierProducts(
+        []
+      );
+
+      setSupplierSearched(
+        true
+      );
 
       setSupplierError(
         error?.message ||
           "Unable to connect to the CJ supplier catalog."
       );
     } finally {
-      setSearchingSupplier(false);
+      setSearchingSupplier(
+        false
+      );
     }
   }
 
@@ -677,15 +951,19 @@ export default function Home() {
     setCartOpen(false);
 
     if (!value.trim()) {
-      setSupplierProducts([]);
+      setSupplierProducts(
+        []
+      );
       setSupplierError("");
+      setSupplierSearched(
+        false
+      );
     }
   }
 
   function handleSearchSubmit() {
     if (search.trim()) {
       setCategory("All");
-
       searchSupplierCatalog(
         search
       );
@@ -706,7 +984,8 @@ export default function Home() {
     setCart((current) => {
       const existing =
         current.find(
-          (x) => x.id === item.id
+          (x) =>
+            x.id === item.id
         );
 
       if (existing) {
@@ -716,7 +995,8 @@ export default function Home() {
               ? {
                   ...x,
                   quantity:
-                    x.quantity + 1,
+                    x.quantity +
+                    1,
                 }
               : x
         );
@@ -734,7 +1014,6 @@ export default function Home() {
 
   function buyNow(item) {
     addToCart(item);
-
     setProduct(null);
     setCartOpen(true);
   }
@@ -767,8 +1046,13 @@ export default function Home() {
     setCartOpen(false);
     setSearch("");
     setCategory("All");
-    setSupplierProducts([]);
+    setSupplierProducts(
+      []
+    );
     setSupplierError("");
+    setSupplierSearched(
+      false
+    );
 
     window.scrollTo({
       top: 0,
@@ -776,48 +1060,131 @@ export default function Home() {
     });
   }
 
-  /*
-    Home-page groups.
-
-    When CJ returns enough products,
-    these sections use live supplier products.
-
-    Demo products remain as a visual fallback
-    so the storefront does not look empty.
-  */
-
-  const liveProducts =
-    homeProducts.length
-      ? homeProducts
-      : demoProducts;
-
   const featuredProducts =
-    liveProducts.slice(0, 8);
+    homeProducts.slice(
+      0,
+      12
+    );
 
   const trendingProducts =
-    liveProducts.slice(8, 16);
+    homeProducts.slice(
+      12,
+      24
+    );
+
+  const miscellaneousProducts =
+    homeProducts.slice(
+      24,
+      72
+    );
 
   const electronicsProducts =
-    liveProducts.filter(
-      (item) =>
-        item.category ===
-        "Electronics"
-    ).slice(0, 8);
+    homeProducts
+      .filter(
+        (item) =>
+          item.category ===
+          "Electronics"
+      )
+      .slice(
+        0,
+        18
+      );
+
+  const clothingProducts =
+    homeProducts
+      .filter(
+        (item) =>
+          item.category ===
+          "Clothing"
+      )
+      .slice(
+        0,
+        18
+      );
+
+  const beautyProducts =
+    homeProducts
+      .filter(
+        (item) =>
+          item.category ===
+          "Beauty"
+      )
+      .slice(
+        0,
+        18
+      );
+
+  const sportsProducts =
+    homeProducts
+      .filter(
+        (item) =>
+          item.category ===
+          "Sports"
+      )
+      .slice(
+        0,
+        18
+      );
+
+  const toysProducts =
+    homeProducts
+      .filter(
+        (item) =>
+          item.category ===
+          "Toys"
+      )
+      .slice(
+        0,
+        18
+      );
+
+  const travelProducts =
+    homeProducts
+      .filter(
+        (item) =>
+          item.category ===
+          "Travel"
+      )
+      .slice(
+        0,
+        18
+      );
+
+  const toolsProducts =
+    homeProducts
+      .filter(
+        (item) =>
+          item.category ===
+          "Tools"
+      )
+      .slice(
+        0,
+        18
+      );
 
   const homeCategoryProducts =
-    liveProducts.filter(
-      (item) =>
-        item.category === "Home"
-    ).slice(0, 8);
+    homeProducts
+      .filter(
+        (item) =>
+          item.category ===
+          "Home"
+      )
+      .slice(
+        0,
+        18
+      );
 
   const dealProducts =
-    liveProducts
+    homeProducts
       .filter(
         (item) =>
           item.oldPrice >
           item.price
       )
-      .slice(0, 8);
+      .slice(
+        0,
+        12
+      );
 
   return (
     <>
@@ -1272,9 +1639,7 @@ export default function Home() {
             16px 16px;
         }
 
-        .actions button,
-        .detail-actions
-          button {
+        .actions button {
           height: 42px;
           border-radius: 6px;
           font-size: 12px;
@@ -1408,9 +1773,11 @@ export default function Home() {
           margin-top: 25px;
         }
 
-        .detail-actions
-          button {
+        .detail-actions button {
           height: 52px;
+          border-radius: 6px;
+          font-size: 12px;
+          font-weight: 900;
         }
 
         .cart-page {
@@ -1732,8 +2099,15 @@ export default function Home() {
                     setProduct(null);
                     setCartOpen(false);
                     setSearch("");
-                    setSupplierProducts([]);
-                    setSupplierError("");
+                    setSupplierProducts(
+                      []
+                    );
+                    setSupplierError(
+                      ""
+                    );
+                    setSupplierSearched(
+                      false
+                    );
                   }}
                 >
                   {item}
@@ -1823,38 +2197,35 @@ export default function Home() {
                     </span>
                   </div>
 
-                  {supplierError && (
-                    <div className="supplier-status supplier-error">
-                      {
-                        supplierError
-                      }
-                    </div>
-                  )}
+                  {supplierError &&
+                    supplierSearched && (
+                      <div className="supplier-status supplier-error">
+                        {
+                          supplierError
+                        }
+                      </div>
+                    )}
 
-                  {searchingSupplier && (
-                    <div className="supplier-status">
-                      Searching the
-                      CJ supplier
-                      catalog...
-                    </div>
-                  )}
+                  {!searchingSupplier &&
+                    supplierSearched &&
+                    filtered.length ===
+                      0 &&
+                    !supplierError && (
+                      <div className="empty">
+                        <h2>
+                          No products found.
+                        </h2>
 
-                  {filtered.length ===
-                    0 &&
-                  !searchingSupplier ? (
-                    <div className="empty">
-                      <h2>
-                        We couldn't
-                        find that
-                        item.
-                      </h2>
+                        <p>
+                          CJ did not return
+                          any usable products
+                          for this search.
+                        </p>
+                      </div>
+                    )}
 
-                      <p>
-                        Try another
-                        search.
-                      </p>
-                    </div>
-                  ) : (
+                  {filtered.length >
+                    0 && (
                     <div className="products">
                       {filtered.map(
                         (item) => (
@@ -1912,72 +2283,160 @@ export default function Home() {
                     }
                   />
 
-                  {electronicsProducts.length >
-                    0 && (
-                    <ProductSection
-                      title="Electronics"
-                      subtitle="Popular electronics and everyday tech"
-                      products={
-                        electronicsProducts
-                      }
-                      addToCart={
-                        addToCart
-                      }
-                      buyNow={
-                        buyNow
-                      }
-                      openProduct={
-                        openProduct
-                      }
-                    />
-                  )}
+                  <ProductSection
+                    title="More Products"
+                    subtitle="Keep scrolling to discover more from Marlow"
+                    products={
+                      miscellaneousProducts
+                    }
+                    addToCart={
+                      addToCart
+                    }
+                    buyNow={buyNow}
+                    openProduct={
+                      openProduct
+                    }
+                  />
 
-                  {homeCategoryProducts.length >
-                    0 && (
-                    <ProductSection
-                      title="Home & Kitchen"
-                      subtitle="Products to make your home better"
-                      products={
-                        homeCategoryProducts
-                      }
-                      addToCart={
-                        addToCart
-                      }
-                      buyNow={
-                        buyNow
-                      }
-                      openProduct={
-                        openProduct
-                      }
-                    />
-                  )}
+                  <ProductSection
+                    title="Electronics"
+                    subtitle="Popular electronics and everyday technology"
+                    products={
+                      electronicsProducts
+                    }
+                    addToCart={
+                      addToCart
+                    }
+                    buyNow={buyNow}
+                    openProduct={
+                      openProduct
+                    }
+                  />
 
-                  {dealProducts.length >
-                    0 && (
-                    <ProductSection
-                      title="Marlow Deals"
-                      subtitle="Products with room for a great deal"
-                      products={
-                        dealProducts
-                      }
-                      addToCart={
-                        addToCart
-                      }
-                      buyNow={
-                        buyNow
-                      }
-                      openProduct={
-                        openProduct
-                      }
-                    />
-                  )}
+                  <ProductSection
+                    title="Clothing"
+                    subtitle="Everyday fashion and apparel"
+                    products={
+                      clothingProducts
+                    }
+                    addToCart={
+                      addToCart
+                    }
+                    buyNow={buyNow}
+                    openProduct={
+                      openProduct
+                    }
+                  />
+
+                  <ProductSection
+                    title="Beauty"
+                    subtitle="Beauty, skincare, hair and personal care"
+                    products={
+                      beautyProducts
+                    }
+                    addToCart={
+                      addToCart
+                    }
+                    buyNow={buyNow}
+                    openProduct={
+                      openProduct
+                    }
+                  />
+
+                  <ProductSection
+                    title="Sports"
+                    subtitle="Gear and products for active lifestyles"
+                    products={
+                      sportsProducts
+                    }
+                    addToCart={
+                      addToCart
+                    }
+                    buyNow={buyNow}
+                    openProduct={
+                      openProduct
+                    }
+                  />
+
+                  <ProductSection
+                    title="Toys"
+                    subtitle="Fun products for kids and families"
+                    products={
+                      toysProducts
+                    }
+                    addToCart={
+                      addToCart
+                    }
+                    buyNow={buyNow}
+                    openProduct={
+                      openProduct
+                    }
+                  />
+
+                  <ProductSection
+                    title="Travel"
+                    subtitle="Travel gear and everyday accessories"
+                    products={
+                      travelProducts
+                    }
+                    addToCart={
+                      addToCart
+                    }
+                    buyNow={buyNow}
+                    openProduct={
+                      openProduct
+                    }
+                  />
+
+                  <ProductSection
+                    title="Tools"
+                    subtitle="Tools, hardware and useful equipment"
+                    products={
+                      toolsProducts
+                    }
+                    addToCart={
+                      addToCart
+                    }
+                    buyNow={buyNow}
+                    openProduct={
+                      openProduct
+                    }
+                  />
+
+                  <ProductSection
+                    title="Home & Kitchen"
+                    subtitle="Products to make your home better"
+                    products={
+                      homeCategoryProducts
+                    }
+                    addToCart={
+                      addToCart
+                    }
+                    buyNow={buyNow}
+                    openProduct={
+                      openProduct
+                    }
+                  />
+
+                  <ProductSection
+                    title="Marlow Deals"
+                    subtitle="Products with room for a great deal"
+                    products={
+                      dealProducts
+                    }
+                    addToCart={
+                      addToCart
+                    }
+                    buyNow={buyNow}
+                    openProduct={
+                      openProduct
+                    }
+                  />
 
                   {loadingHomeProducts && (
                     <div className="supplier-status">
-                      Loading more
-                      products from
-                      the connected
-                      supplier catalog...
+                      Loading Marlow's product
+                      catalog...
                     </div>
                   )}
 
@@ -1990,48 +2449,40 @@ export default function Home() {
                   <section className="promo">
                     <div className="promo-item">
                       <div className="promo-title">
-                        A growing
-                        marketplace
+                        A growing marketplace
                       </div>
 
                       <div className="promo-text">
-                        Marlow is
-                        designed to
-                        grow into a
-                        large product
-                        catalog.
+                        Marlow is designed
+                        to grow into a large
+                        product catalog
+                        powered by connected
+                        supplier inventory.
                       </div>
                     </div>
 
                     <div className="promo-item">
                       <div className="promo-title">
-                        Shop without
-                        searching
-                        forever
+                        Discover more
                       </div>
 
                       <div className="promo-text">
-                        Featured,
-                        trending,
-                        category, and
-                        deal sections
-                        help customers
-                        discover
+                        Customers can browse
+                        the homepage or search
+                        CJ for additional
                         products.
                       </div>
                     </div>
 
                     <div className="promo-item">
                       <div className="promo-title">
-                        Smart Marlow
-                        pricing
+                        Smart Marlow pricing
                       </div>
 
                       <div className="promo-text">
-                        Supplier costs
-                        are converted
-                        into Marlow
-                        selling prices
+                        Supplier costs are
+                        converted into
+                        Marlow selling prices
                         automatically.
                       </div>
                     </div>
@@ -2088,15 +2539,14 @@ export default function Home() {
 
                   <div className="detail-price">
                     $
-                    {product.price.toFixed(
-                      2
-                    )}
+                    {Number(
+                      product.price
+                    ).toFixed(2)}
                   </div>
 
                   <div className="description">
                     <strong>
-                      Product
-                      information
+                      Product information
                     </strong>
 
                     <p>
@@ -2108,17 +2558,13 @@ export default function Home() {
                     {product.supplierCost >
                       0 && (
                       <p>
-                        Marlow's
-                        automatic
-                        pricing
-                        system
+                        Marlow's automatic
+                        pricing system
                         calculates the
-                        selling price
-                        from the
-                        supplier cost
-                        while
-                        maintaining at
-                        least $1 gross
+                        selling price from
+                        the supplier cost
+                        while maintaining
+                        at least $1 gross
                         profit.
                       </p>
                     )}
@@ -2238,7 +2684,9 @@ export default function Home() {
 
                           <strong>
                             $
-                            {item.price.toFixed(
+                            {Number(
+                              item.price
+                            ).toFixed(
                               2
                             )}
                           </strong>
@@ -2329,8 +2777,7 @@ export default function Home() {
                         )
                       }
                     >
-                      Proceed to
-                      Checkout
+                      Proceed to Checkout
                     </button>
                   </div>
                 </>
