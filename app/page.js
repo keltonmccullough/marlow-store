@@ -2,9 +2,9 @@
 
 import { useMemo, useState } from "react";
 
-const products = [
+const demoProducts = [
   {
-    id: 1,
+    id: "demo-1",
     name: "Wireless Noise-Canceling Headphones",
     price: 89.99,
     oldPrice: 129.99,
@@ -16,9 +16,10 @@ const products = [
       "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=1000&q=90",
     description:
       "Premium wireless headphones designed for immersive sound, comfortable all-day listening, and dependable battery life.",
+    demo: true,
   },
   {
-    id: 2,
+    id: "demo-2",
     name: "Premium Smart Watch",
     price: 79.99,
     oldPrice: 119.99,
@@ -30,9 +31,10 @@ const products = [
       "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=1000&q=90",
     description:
       "A modern smartwatch with activity tracking, notifications, and an elegant everyday design.",
+    demo: true,
   },
   {
-    id: 3,
+    id: "demo-3",
     name: "Insulated Stainless Steel Bottle",
     price: 29.99,
     oldPrice: 39.99,
@@ -44,9 +46,10 @@ const products = [
       "https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&w=1000&q=90",
     description:
       "Durable insulated bottle designed to keep drinks cold or hot throughout the day.",
+    demo: true,
   },
   {
-    id: 4,
+    id: "demo-4",
     name: "Portable Wireless Speaker",
     price: 44.99,
     oldPrice: 59.99,
@@ -58,9 +61,10 @@ const products = [
       "https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?auto=format&fit=crop&w=1000&q=90",
     description:
       "Compact wireless speaker with rich audio and a portable design made for home or travel.",
+    demo: true,
   },
   {
-    id: 5,
+    id: "demo-5",
     name: "Modern LED Desk Lamp",
     price: 34.99,
     oldPrice: 49.99,
@@ -72,9 +76,10 @@ const products = [
       "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=1000&q=90",
     description:
       "Clean modern lighting for desks, bedrooms, offices, studying, and everyday use.",
+    demo: true,
   },
   {
-    id: 6,
+    id: "demo-6",
     name: "Everyday Travel Backpack",
     price: 54.99,
     oldPrice: 74.99,
@@ -86,9 +91,10 @@ const products = [
       "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=1000&q=90",
     description:
       "A versatile backpack with organized storage for work, school, electronics, and travel.",
+    demo: true,
   },
   {
-    id: 7,
+    id: "demo-7",
     name: "Ultra Soft Home Throw",
     price: 39.99,
     oldPrice: 54.99,
@@ -100,9 +106,10 @@ const products = [
       "https://images.unsplash.com/photo-1584100936595-c0654b55a2e2?auto=format&fit=crop&w=1000&q=90",
     description:
       "A soft, comfortable throw designed to add warmth and style to your living space.",
+    demo: true,
   },
   {
-    id: 8,
+    id: "demo-8",
     name: "Kitchen Organization Collection",
     price: 31.99,
     oldPrice: 44.99,
@@ -114,6 +121,7 @@ const products = [
       "https://images.unsplash.com/photo-1556911220-bff31c812dba?auto=format&fit=crop&w=1000&q=90",
     description:
       "Practical organization pieces designed to make everyday kitchen storage easier.",
+    demo: true,
   },
 ];
 
@@ -129,70 +137,225 @@ const categories = [
   "Tools",
 ];
 
+function getSupplierName(item) {
+  return (
+    item.productName ||
+    item.name ||
+    item.title ||
+    item.productTitle ||
+    "Supplier Product"
+  );
+}
+
+function getSupplierImage(item) {
+  return (
+    item.productImage ||
+    item.productImageUrl ||
+    item.image ||
+    item.imageUrl ||
+    item.img ||
+    ""
+  );
+}
+
+function getSupplierCost(item) {
+  const possibleValues = [
+    item.sellPrice,
+    item.productPrice,
+    item.price,
+    item.minPrice,
+    item.costPrice,
+  ];
+
+  for (const value of possibleValues) {
+    const number = Number(value);
+    if (Number.isFinite(number) && number > 0) {
+      return number;
+    }
+  }
+
+  return 0;
+}
+
+function calculateMarlowPrice(cost) {
+  const numericCost = Number(cost);
+
+  if (!Number.isFinite(numericCost) || numericCost <= 0) {
+    return 1;
+  }
+
+  let markup;
+
+  if (numericCost < 10) {
+    markup = 0.25;
+  } else if (numericCost < 25) {
+    markup = 0.22;
+  } else if (numericCost < 50) {
+    markup = 0.18;
+  } else if (numericCost < 100) {
+    markup = 0.15;
+  } else if (numericCost < 200) {
+    markup = 0.12;
+  } else {
+    markup = 0.10;
+  }
+
+  const percentagePrice = numericCost * (1 + markup);
+  const minimumProfitPrice = numericCost + 1;
+
+  return Math.max(percentagePrice, minimumProfitPrice);
+}
+
+function convertSupplierProduct(item, index) {
+  const cost = getSupplierCost(item);
+  const sellingPrice = calculateMarlowPrice(cost);
+  const image = getSupplierImage(item);
+
+  return {
+    id:
+      item.pid ||
+      item.productId ||
+      item.id ||
+      item.sku ||
+      `cj-${index}-${getSupplierName(item)}`,
+    name: getSupplierName(item),
+    price: sellingPrice,
+    oldPrice: sellingPrice * 1.15,
+    category:
+      item.categoryName ||
+      item.category ||
+      item.categoryNameEn ||
+      "Products",
+    rating: Number(item.rating) || 4.5,
+    reviews: Number(item.reviewCount) || 0,
+    badge: "Marlow Pick",
+    image,
+    description:
+      item.description ||
+      item.productDescription ||
+      "Product supplied through Marlow's authorized supplier catalog.",
+    supplierCost: cost,
+    supplierProduct: item,
+    supplier: "CJ Dropshipping",
+    demo: false,
+  };
+}
+
 export default function Home() {
   const [search, setSearch] = useState("");
-const [category, setCategory] = useState("All");
-const [product, setProduct] = useState(null);
-const [cartOpen, setCartOpen] = useState(false);
-const [cart, setCart] = useState([]);
-const [supplierProducts, setSupplierProducts] = useState([]);
-const [searchingSupplier, setSearchingSupplier] = useState(false);
-const [supplierError, setSupplierError] = useState("");
+  const [category, setCategory] = useState("All");
+  const [product, setProduct] = useState(null);
+  const [cartOpen, setCartOpen] = useState(false);
+  const [cart, setCart] = useState([]);
 
- const filtered = useMemo(() => {
-  const query = search.trim().toLowerCase();
+  const [supplierProducts, setSupplierProducts] = useState([]);
+  const [searchingSupplier, setSearchingSupplier] = useState(false);
+  const [supplierError, setSupplierError] = useState("");
 
-  if (query) {
-    return supplierProducts;
-  }
+  const displayProducts =
+    search.trim().length > 0 || supplierProducts.length > 0
+      ? supplierProducts
+      : demoProducts;
 
-  return products.filter((item) => {
-    const categoryMatch =
-      category === "All" || item.category === category;
+  const filtered = useMemo(() => {
+    const query = search.trim().toLowerCase();
 
-    return categoryMatch;
-  });
-}, [search, category, supplierProducts]);
-  async function searchSupplier(query) {
-  const trimmedQuery = query.trim();
+    return displayProducts.filter((item) => {
+      const categoryMatch =
+        category === "All" || item.category === category;
 
-  if (!trimmedQuery) {
-    setSupplierProducts([]);
-    setSupplierError("");
-    return;
-  }
+      const searchMatch =
+        !query ||
+        item.name.toLowerCase().includes(query) ||
+        item.category.toLowerCase().includes(query) ||
+        item.description.toLowerCase().includes(query);
 
-  setSearchingSupplier(true);
-  setSupplierError("");
+      return categoryMatch && searchMatch;
+    });
+  }, [search, category, displayProducts]);
 
-  try {
-    const response = await fetch(
-      `/api/search?q=${encodeURIComponent(trimmedQuery)}`
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data?.message || "Supplier search failed.");
-    }
-
-    setSupplierProducts(data?.products || []);
-  } catch (error) {
-    console.error("Supplier search error:", error);
-    setSupplierProducts([]);
-    setSupplierError(
-      "We couldn't connect to the supplier catalog. Please try again."
-    );
-  } finally {
-    setSearchingSupplier(false);
-  }
-}
-  const cartCount = cart.reduce((total, item) => total + item.quantity, 0);
+  const cartCount = cart.reduce(
+    (total, item) => total + item.quantity,
+    0
+  );
 
   const cartTotal = cart.reduce(
     (total, item) => total + item.price * item.quantity,
     0
   );
+
+  async function searchSupplierCatalog(query) {
+    const cleanQuery = query.trim();
+
+    if (!cleanQuery) {
+      setSupplierProducts([]);
+      setSupplierError("");
+      return;
+    }
+
+    setSearchingSupplier(true);
+    setSupplierError("");
+
+    try {
+      const response = await fetch(
+        `/api/search?q=${encodeURIComponent(cleanQuery)}`
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data?.details ||
+            data?.message ||
+            "Supplier search failed."
+        );
+      }
+
+      const rawProducts = Array.isArray(data?.products)
+        ? data.products
+        : [];
+
+      const convertedProducts = rawProducts
+        .map(convertSupplierProduct)
+        .filter((item) => item.image);
+
+      setSupplierProducts(convertedProducts);
+
+      if (convertedProducts.length === 0) {
+        setSupplierError(
+          "CJ connected, but no products with usable information were returned for that search."
+        );
+      }
+    } catch (error) {
+      console.error(error);
+
+      setSupplierProducts([]);
+
+      setSupplierError(
+        error?.message ||
+          "Unable to connect to the CJ supplier catalog."
+      );
+    } finally {
+      setSearchingSupplier(false);
+    }
+  }
+
+  function handleSearchChange(value) {
+    setSearch(value);
+    setProduct(null);
+    setCartOpen(false);
+
+    if (!value.trim()) {
+      setSupplierProducts([]);
+      setSupplierError("");
+    }
+  }
+
+  function handleSearchSubmit() {
+    if (search.trim()) {
+      searchSupplierCatalog(search);
+    }
+  }
 
   function addToCart(item) {
     setCart((current) => {
@@ -221,7 +384,10 @@ const [supplierError, setSupplierError] = useState("");
       current
         .map((item) =>
           item.id === id
-            ? { ...item, quantity: item.quantity + amount }
+            ? {
+                ...item,
+                quantity: item.quantity + amount,
+              }
             : item
         )
         .filter((item) => item.quantity > 0)
@@ -233,7 +399,13 @@ const [supplierError, setSupplierError] = useState("");
     setCartOpen(false);
     setSearch("");
     setCategory("All");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setSupplierProducts([]);
+    setSupplierError("");
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
   }
 
   return (
@@ -267,7 +439,7 @@ const [supplierError, setSupplierError] = useState("");
           position: sticky;
           top: 0;
           z-index: 100;
-          background: rgba(255,255,255,.97);
+          background: rgba(255, 255, 255, 0.97);
           backdrop-filter: blur(12px);
           border-bottom: 1px solid #e8e8e8;
         }
@@ -415,7 +587,12 @@ const [supplierError, setSupplierError] = useState("");
           overflow: hidden;
           position: relative;
           background:
-            linear-gradient(90deg, #171717 0%, #292929 58%, #404040 100%);
+            linear-gradient(
+              90deg,
+              #171717 0%,
+              #292929 58%,
+              #404040 100%
+            );
           color: white;
           display: flex;
           align-items: center;
@@ -439,7 +616,7 @@ const [supplierError, setSupplierError] = useState("");
         .hero h1 {
           margin: 13px 0 16px;
           font-size: clamp(42px, 5vw, 68px);
-          line-height: .96;
+          line-height: 0.96;
           letter-spacing: -4px;
         }
 
@@ -467,7 +644,7 @@ const [supplierError, setSupplierError] = useState("");
           right: -100px;
           top: -55px;
           border-radius: 50%;
-          border: 95px solid rgba(255,255,255,.055);
+          border: 95px solid rgba(255, 255, 255, 0.055);
         }
 
         .hero-shape:after {
@@ -475,7 +652,7 @@ const [supplierError, setSupplierError] = useState("");
           position: absolute;
           inset: 45px;
           border-radius: 50%;
-          border: 1px solid rgba(255,255,255,.09);
+          border: 1px solid rgba(255, 255, 255, 0.09);
         }
 
         .section {
@@ -510,7 +687,10 @@ const [supplierError, setSupplierError] = useState("");
 
         .products {
           display: grid;
-          grid-template-columns: repeat(4, minmax(0,1fr));
+          grid-template-columns: repeat(
+            4,
+            minmax(0, 1fr)
+          );
           gap: 18px;
         }
 
@@ -519,12 +699,12 @@ const [supplierError, setSupplierError] = useState("");
           border: 1px solid #e5e5e5;
           border-radius: 11px;
           overflow: hidden;
-          transition: .2s ease;
+          transition: 0.2s ease;
         }
 
         .card:hover {
           transform: translateY(-3px);
-          box-shadow: 0 14px 35px rgba(0,0,0,.08);
+          box-shadow: 0 14px 35px rgba(0, 0, 0, 0.08);
         }
 
         .photo-button {
@@ -548,7 +728,7 @@ const [supplierError, setSupplierError] = useState("");
           height: 100%;
           object-fit: cover;
           display: block;
-          transition: transform .3s ease;
+          transition: transform 0.3s ease;
         }
 
         .card:hover .photo img {
@@ -565,8 +745,8 @@ const [supplierError, setSupplierError] = useState("");
           font-size: 10px;
           font-weight: 900;
           text-transform: uppercase;
-          letter-spacing: .7px;
-          box-shadow: 0 3px 10px rgba(0,0,0,.08);
+          letter-spacing: 0.7px;
+          box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
         }
 
         .info {
@@ -739,6 +919,10 @@ const [supplierError, setSupplierError] = useState("");
           font-size: 14px;
         }
 
+        .description p {
+          margin-bottom: 0;
+        }
+
         .detail-actions {
           display: grid;
           grid-template-columns: 1fr 1fr;
@@ -831,6 +1015,20 @@ const [supplierError, setSupplierError] = useState("");
           color: #111;
         }
 
+        .supplier-status {
+          margin: 0 0 18px;
+          padding: 13px 15px;
+          border: 1px solid #e3e3e3;
+          border-radius: 8px;
+          background: white;
+          color: #666;
+          font-size: 13px;
+        }
+
+        .supplier-error {
+          color: #8a1f1f;
+        }
+
         footer {
           margin-top: 65px;
           background: #171717;
@@ -859,7 +1057,10 @@ const [supplierError, setSupplierError] = useState("");
           }
 
           .products {
-            grid-template-columns: repeat(3, minmax(0,1fr));
+            grid-template-columns: repeat(
+              3,
+              minmax(0, 1fr)
+            );
           }
         }
 
@@ -899,11 +1100,14 @@ const [supplierError, setSupplierError] = useState("");
           }
 
           .hero-shape {
-            opacity: .5;
+            opacity: 0.5;
           }
 
           .products {
-            grid-template-columns: repeat(2, minmax(0,1fr));
+            grid-template-columns: repeat(
+              2,
+              minmax(0, 1fr)
+            );
             gap: 10px;
           }
 
@@ -945,32 +1149,53 @@ const [supplierError, setSupplierError] = useState("");
 
       <header className="header">
         <div className="header-main">
-          <button className="brand" onClick={showHome}>
-            <span className="brand-name">Marlow</span>
-            <span className="brand-sub">Shop smarter</span>
+          <button
+            className="brand"
+            onClick={showHome}
+          >
+            <span className="brand-name">
+              Marlow
+            </span>
+
+            <span className="brand-sub">
+              Shop smarter
+            </span>
           </button>
 
-          <div className="search">
+          <form
+            className="search"
+            onSubmit={(event) => {
+              event.preventDefault();
+              handleSearchSubmit();
+            }}
+          >
             <input
               value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setProduct(null);
-                setCartOpen(false);
-              }}
+              onChange={(event) =>
+                handleSearchChange(
+                  event.target.value
+                )
+              }
               placeholder="Search products, brands and more..."
             />
-           <button
-  aria-label="Search"
-  onClick={() => searchSupplier(search)}
->
-  ⌕
-</button>
-          </div>
+
+            <button
+              type="submit"
+              aria-label="Search"
+              disabled={searchingSupplier}
+            >
+              {searchingSupplier ? "…" : "⌕"}
+            </button>
+          </form>
 
           <div className="header-links">
-            <button className="header-link">Account</button>
-            <button className="header-link">Orders</button>
+            <button className="header-link">
+              Account
+            </button>
+
+            <button className="header-link">
+              Orders
+            </button>
 
             <button
               className="cart"
@@ -989,12 +1214,21 @@ const [supplierError, setSupplierError] = useState("");
             {categories.map((item) => (
               <button
                 key={item}
-                className={category === item ? "active" : ""}
+                className={
+                  category === item
+                    ? "active"
+                    : ""
+                }
                 onClick={() => {
                   setCategory(item);
-                  setSearch("");
                   setProduct(null);
                   setCartOpen(false);
+
+                  if (item === "All") {
+                    setSearch("");
+                    setSupplierProducts([]);
+                    setSupplierError("");
+                  }
                 }}
               >
                 {item}
@@ -1007,54 +1241,67 @@ const [supplierError, setSupplierError] = useState("");
       <main className="container">
         {!product && !cartOpen && (
           <>
-            {!search && category === "All" && (
-              <section className="hero">
-                <div className="hero-content">
-                  <div className="hero-kicker">
-                    Welcome to Marlow
+            {!search &&
+              category === "All" &&
+              supplierProducts.length === 0 && (
+                <section className="hero">
+                  <div className="hero-content">
+                    <div className="hero-kicker">
+                      Welcome to Marlow
+                    </div>
+
+                    <h1>
+                      Shopping made
+                      <br />
+                      beautifully simple.
+                    </h1>
+
+                    <p>
+                      Discover products you'll
+                      love, find what you're looking
+                      for, and shop everything from
+                      one place.
+                    </p>
+
+                    <button
+                      className="hero-action"
+                      onClick={() =>
+                        document
+                          .getElementById(
+                            "recommended"
+                          )
+                          ?.scrollIntoView({
+                            behavior: "smooth",
+                          })
+                      }
+                    >
+                      Explore Products
+                    </button>
                   </div>
 
-                  <h1>
-                    Shopping made
-                    <br />
-                    beautifully simple.
-                  </h1>
+                  <div className="hero-shape" />
+                </section>
+              )}
 
-                  <p>
-                    Discover products you'll love, find what you're looking
-                    for, and shop everything from one place.
-                  </p>
-
-                  <button
-                    className="hero-action"
-                    onClick={() =>
-                      document
-                        .getElementById("recommended")
-                        ?.scrollIntoView({ behavior: "smooth" })
-                    }
-                  >
-                    Explore Products
-                  </button>
-                </div>
-
-                <div className="hero-shape" />
-              </section>
-            )}
-
-            <section className="section" id="recommended">
+            <section
+              className="section"
+              id="recommended"
+            >
               <div className="section-head">
                 <div>
                   <h2>
                     {search
                       ? `Search results for "${search}"`
                       : category !== "All"
-                      ? category
-                      : "Recommended for You"}
+                        ? category
+                        : "Recommended for You"}
                   </h2>
 
                   <p>
                     {search
-                      ? "Products matching your search"
+                      ? searchingSupplier
+                        ? "Searching Marlow's supplier catalog..."
+                        : "Products matching your search"
                       : "Popular products selected for Marlow shoppers"}
                   </p>
                 </div>
@@ -1064,29 +1311,56 @@ const [supplierError, setSupplierError] = useState("");
                 </button>
               </div>
 
-              {filtered.length === 0 ? (
+              {supplierError && (
+                <div className="supplier-status supplier-error">
+                  {supplierError}
+                </div>
+              )}
+
+              {searchingSupplier && (
+                <div className="supplier-status">
+                  Searching the CJ supplier catalog...
+                </div>
+              )}
+
+              {filtered.length === 0 &&
+              !searchingSupplier ? (
                 <div className="empty">
-                  <h2>We couldn't find that item.</h2>
+                  <h2>
+                    We couldn't find that item.
+                  </h2>
+
                   <p>
-                    Marlow's supplier-search system will be connected here so
-                    searches can look through authorized supplier catalogs
-                    instead of being limited to this temporary catalog.
+                    Try another search. Marlow is
+                    checking the connected supplier
+                    catalog for available products.
                   </p>
                 </div>
               ) : (
                 <div className="products">
                   {filtered.map((item) => (
-                    <article className="card" key={item.id}>
+                    <article
+                      className="card"
+                      key={item.id}
+                    >
                       <button
                         className="photo-button"
                         onClick={() => {
                           setProduct(item);
-                          window.scrollTo({ top: 0 });
+                          window.scrollTo({
+                            top: 0,
+                          });
                         }}
                       >
                         <div className="photo">
-                          <img src={item.image} alt={item.name} />
-                          <span className="badge">{item.badge}</span>
+                          <img
+                            src={item.image}
+                            alt={item.name}
+                          />
+
+                          <span className="badge">
+                            {item.badge}
+                          </span>
                         </div>
 
                         <div className="info">
@@ -1094,20 +1368,32 @@ const [supplierError, setSupplierError] = useState("");
                             {item.category}
                           </div>
 
-                          <div className="name">{item.name}</div>
+                          <div className="name">
+                            {item.name}
+                          </div>
 
                           <div className="rating">
-                            <span className="stars">★★★★★</span>{" "}
-                            {item.rating} ({item.reviews.toLocaleString()})
+                            <span className="stars">
+                              ★★★★★
+                            </span>{" "}
+                            {item.rating}{" "}
+                            {item.reviews > 0 &&
+                              `(${item.reviews.toLocaleString()})`}
                           </div>
 
                           <div className="price-row">
                             <span className="price">
-                              ${item.price.toFixed(2)}
+                              $
+                              {item.price.toFixed(
+                                2
+                              )}
                             </span>
 
                             <span className="old">
-                              ${item.oldPrice.toFixed(2)}
+                              $
+                              {item.oldPrice.toFixed(
+                                2
+                              )}
                             </span>
                           </div>
                         </div>
@@ -1116,14 +1402,18 @@ const [supplierError, setSupplierError] = useState("");
                       <div className="actions">
                         <button
                           className="add"
-                          onClick={() => addToCart(item)}
+                          onClick={() =>
+                            addToCart(item)
+                          }
                         >
                           Add to Cart
                         </button>
 
                         <button
                           className="buy"
-                          onClick={() => buyNow(item)}
+                          onClick={() =>
+                            buyNow(item)
+                          }
                         >
                           Buy Now
                         </button>
@@ -1134,100 +1424,146 @@ const [supplierError, setSupplierError] = useState("");
               )}
             </section>
 
-            {!search && category === "All" && (
-              <>
-                <section className="section">
-                  <div className="section-head">
-                    <div>
-                      <h2>Trending Now</h2>
-                      <p>Popular picks shoppers are checking out</p>
+            {!search &&
+              category === "All" &&
+              supplierProducts.length === 0 && (
+                <>
+                  <section className="section">
+                    <div className="section-head">
+                      <div>
+                        <h2>Trending Now</h2>
+                        <p>
+                          Popular picks shoppers are
+                          checking out
+                        </p>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="products">
-                    {products.slice(4, 8).map((item) => (
-                      <article className="card" key={item.id}>
-                        <button
-                          className="photo-button"
-                          onClick={() => {
-                            setProduct(item);
-                            window.scrollTo({ top: 0 });
-                          }}
-                        >
-                          <div className="photo">
-                            <img src={item.image} alt={item.name} />
-                            <span className="badge">{item.badge}</span>
-                          </div>
-
-                          <div className="info">
-                            <div className="category">
-                              {item.category}
-                            </div>
-
-                            <div className="name">{item.name}</div>
-
-                            <div className="rating">
-                              <span className="stars">★★★★★</span>{" "}
-                              {item.rating} ({item.reviews.toLocaleString()})
-                            </div>
-
-                            <div className="price-row">
-                              <span className="price">
-                                ${item.price.toFixed(2)}
-                              </span>
-
-                              <span className="old">
-                                ${item.oldPrice.toFixed(2)}
-                              </span>
-                            </div>
-                          </div>
-                        </button>
-
-                        <div className="actions">
-                          <button
-                            className="add"
-                            onClick={() => addToCart(item)}
+                    <div className="products">
+                      {demoProducts
+                        .slice(4, 8)
+                        .map((item) => (
+                          <article
+                            className="card"
+                            key={item.id}
                           >
-                            Add to Cart
-                          </button>
+                            <button
+                              className="photo-button"
+                              onClick={() => {
+                                setProduct(item);
+                                window.scrollTo({
+                                  top: 0,
+                                });
+                              }}
+                            >
+                              <div className="photo">
+                                <img
+                                  src={item.image}
+                                  alt={item.name}
+                                />
 
-                          <button
-                            className="buy"
-                            onClick={() => buyNow(item)}
-                          >
-                            Buy Now
-                          </button>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                </section>
+                                <span className="badge">
+                                  {item.badge}
+                                </span>
+                              </div>
 
-                <section className="promo">
-                  <div className="promo-item">
-                    <div className="promo-title">A growing marketplace</div>
-                    <div className="promo-text">
-                      Built to expand into a massive product catalog.
+                              <div className="info">
+                                <div className="category">
+                                  {item.category}
+                                </div>
+
+                                <div className="name">
+                                  {item.name}
+                                </div>
+
+                                <div className="rating">
+                                  <span className="stars">
+                                    ★★★★★
+                                  </span>{" "}
+                                  {item.rating} (
+                                  {item.reviews.toLocaleString()}
+                                  )
+                                </div>
+
+                                <div className="price-row">
+                                  <span className="price">
+                                    $
+                                    {item.price.toFixed(
+                                      2
+                                    )}
+                                  </span>
+
+                                  <span className="old">
+                                    $
+                                    {item.oldPrice.toFixed(
+                                      2
+                                    )}
+                                  </span>
+                                </div>
+                              </div>
+                            </button>
+
+                            <div className="actions">
+                              <button
+                                className="add"
+                                onClick={() =>
+                                  addToCart(item)
+                                }
+                              >
+                                Add to Cart
+                              </button>
+
+                              <button
+                                className="buy"
+                                onClick={() =>
+                                  buyNow(item)
+                                }
+                              >
+                                Buy Now
+                              </button>
+                            </div>
+                          </article>
+                        ))}
                     </div>
-                  </div>
+                  </section>
 
-                  <div className="promo-item">
-                    <div className="promo-title">Easy product discovery</div>
-                    <div className="promo-text">
-                      Search, explore recommendations, and open products for
-                      more information.
-                    </div>
-                  </div>
+                  <section className="promo">
+                    <div className="promo-item">
+                      <div className="promo-title">
+                        A growing marketplace
+                      </div>
 
-                  <div className="promo-item">
-                    <div className="promo-title">Simple shopping</div>
-                    <div className="promo-text">
-                      Add products to your cart or choose Buy Now.
+                      <div className="promo-text">
+                        Built to expand into a massive
+                        product catalog.
+                      </div>
                     </div>
-                  </div>
-                </section>
-              </>
-            )}
+
+                    <div className="promo-item">
+                      <div className="promo-title">
+                        Easy product discovery
+                      </div>
+
+                      <div className="promo-text">
+                        Search, explore recommendations,
+                        and open products for more
+                        information.
+                      </div>
+                    </div>
+
+                    <div className="promo-item">
+                      <div className="promo-title">
+                        Simple shopping
+                      </div>
+
+                      <div className="promo-text">
+                        Add products to your cart or
+                        choose Buy Now.
+                      </div>
+                    </div>
+                  </section>
+                </>
+              )}
           </>
         )}
 
@@ -1243,18 +1579,27 @@ const [supplierError, setSupplierError] = useState("");
             <section className="detail">
               <div className="detail-grid">
                 <div className="detail-photo">
-                  <img src={product.image} alt={product.name} />
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                  />
                 </div>
 
                 <div className="detail-info">
-                  <div className="category">{product.category}</div>
+                  <div className="category">
+                    {product.category}
+                  </div>
 
                   <h1>{product.name}</h1>
 
                   <div className="rating">
-                    <span className="stars">★★★★★</span>{" "}
+                    <span className="stars">
+                      ★★★★★
+                    </span>{" "}
                     {product.rating} ·{" "}
-                    {product.reviews.toLocaleString()} reviews
+                    {product.reviews > 0
+                      ? `${product.reviews.toLocaleString()} reviews`
+                      : "Supplier catalog product"}
                   </div>
 
                   <div className="detail-price">
@@ -1262,21 +1607,39 @@ const [supplierError, setSupplierError] = useState("");
                   </div>
 
                   <div className="description">
-                    <strong>Product information</strong>
-                    <p>{product.description}</p>
+                    <strong>
+                      Product information
+                    </strong>
+
+                    <p>
+                      {product.description}
+                    </p>
+
+                    {product.supplierCost > 0 && (
+                      <p>
+                        Marlow automatically calculated
+                        this selling price from the
+                        supplier cost while maintaining
+                        at least $1 gross profit.
+                      </p>
+                    )}
                   </div>
 
                   <div className="detail-actions">
                     <button
                       className="add"
-                      onClick={() => addToCart(product)}
+                      onClick={() =>
+                        addToCart(product)
+                      }
                     >
                       Add to Cart
                     </button>
 
                     <button
                       className="buy"
-                      onClick={() => buyNow(product)}
+                      onClick={() =>
+                        buyNow(product)
+                      }
                     >
                       Buy Now
                     </button>
@@ -1291,7 +1654,9 @@ const [supplierError, setSupplierError] = useState("");
           <>
             <button
               className="back"
-              onClick={() => setCartOpen(false)}
+              onClick={() =>
+                setCartOpen(false)
+              }
             >
               ← Continue Shopping
             </button>
@@ -1299,23 +1664,45 @@ const [supplierError, setSupplierError] = useState("");
             <section className="cart-page">
               <h1>Your Cart</h1>
 
-              <p style={{ color: "#777", marginTop: 5 }}>
-                {cartCount} {cartCount === 1 ? "item" : "items"}
+              <p
+                style={{
+                  color: "#777",
+                  marginTop: 5,
+                }}
+              >
+                {cartCount}{" "}
+                {cartCount === 1
+                  ? "item"
+                  : "items"}
               </p>
 
               {cart.length === 0 ? (
                 <div className="empty">
-                  <h2>Your cart is empty.</h2>
-                  <p>Add something you love and it'll appear here.</p>
+                  <h2>
+                    Your cart is empty.
+                  </h2>
+
+                  <p>
+                    Add something you love and
+                    it'll appear here.
+                  </p>
                 </div>
               ) : (
                 <>
                   {cart.map((item) => (
-                    <div className="cart-item" key={item.id}>
-                      <img src={item.image} alt={item.name} />
+                    <div
+                      className="cart-item"
+                      key={item.id}
+                    >
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                      />
 
                       <div className="cart-item-main">
-                        <strong>{item.name}</strong>
+                        <strong>
+                          {item.name}
+                        </strong>
 
                         <p
                           style={{
@@ -1326,22 +1713,32 @@ const [supplierError, setSupplierError] = useState("");
                           {item.category}
                         </p>
 
-                        <strong>${item.price.toFixed(2)}</strong>
+                        <strong>
+                          ${item.price.toFixed(2)}
+                        </strong>
 
                         <div className="quantity">
                           <button
                             onClick={() =>
-                              updateQuantity(item.id, -1)
+                              updateQuantity(
+                                item.id,
+                                -1
+                              )
                             }
                           >
                             −
                           </button>
 
-                          <strong>{item.quantity}</strong>
+                          <strong>
+                            {item.quantity}
+                          </strong>
 
                           <button
                             onClick={() =>
-                              updateQuantity(item.id, 1)
+                              updateQuantity(
+                                item.id,
+                                1
+                              )
                             }
                           >
                             +
@@ -1350,7 +1747,10 @@ const [supplierError, setSupplierError] = useState("");
                           <button
                             className="remove"
                             onClick={() =>
-                              updateQuantity(item.id, -item.quantity)
+                              updateQuantity(
+                                item.id,
+                                -item.quantity
+                              )
                             }
                           >
                             Remove
@@ -1359,7 +1759,11 @@ const [supplierError, setSupplierError] = useState("");
                       </div>
 
                       <strong>
-                        ${(item.price * item.quantity).toFixed(2)}
+                        $
+                        {(
+                          item.price *
+                          item.quantity
+                        ).toFixed(2)}
                       </strong>
                     </div>
                   ))}
@@ -1368,19 +1772,25 @@ const [supplierError, setSupplierError] = useState("");
                     <div
                       style={{
                         display: "flex",
-                        justifyContent: "space-between",
+                        justifyContent:
+                          "space-between",
                         fontSize: 18,
                       }}
                     >
-                      <strong>Subtotal</strong>
-                      <strong>${cartTotal.toFixed(2)}</strong>
+                      <strong>
+                        Subtotal
+                      </strong>
+
+                      <strong>
+                        ${cartTotal.toFixed(2)}
+                      </strong>
                     </div>
 
                     <button
                       className="checkout"
                       onClick={() =>
                         alert(
-                          "Marlow checkout will be connected after the catalog and payment system are added."
+                          "Checkout, customer accounts, tax, shipping, payment processing, and automatic CJ order submission will be connected in the next stage."
                         )
                       }
                     >
@@ -1397,13 +1807,19 @@ const [supplierError, setSupplierError] = useState("");
       <footer>
         <div className="footer-inner">
           <div>
-            <div style={{ fontSize: 27, fontWeight: 900 }}>
+            <div
+              style={{
+                fontSize: 27,
+                fontWeight: 900,
+              }}
+            >
               Marlow
             </div>
 
             <div className="footer-copy">
-              A modern shopping destination being built to make product
-              discovery simple, convenient, and personal.
+              A modern shopping destination being
+              built to make product discovery simple,
+              convenient, and personal.
             </div>
           </div>
 
@@ -1421,4 +1837,3 @@ const [supplierError, setSupplierError] = useState("");
     </>
   );
 }
-
