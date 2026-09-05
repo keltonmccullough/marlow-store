@@ -3,9 +3,8 @@ import { NextResponse } from "next/server";
 const CJ_BASE_URL =
   "https://developers.cjdropshipping.com/api2.0/v1";
 
-const MAX_PRODUCTS = 150;
-const PAGE_SIZE = 50;
-const MAX_PAGES = 3;
+const DEFAULT_PAGE_SIZE = 100;
+const MAX_PAGE_SIZE = 100;
 
 function getProductId(product) {
   return (
@@ -39,6 +38,7 @@ function getProductImage(product) {
     product?.image ||
     product?.imageUrl ||
     product?.img ||
+    product?.skuImage ||
     "";
 
   return typeof image === "string"
@@ -49,6 +49,7 @@ function getProductImage(product) {
 function getProductCost(product) {
   const possibleValues = [
     product?.nowPrice,
+    product?.discountPrice,
     product?.sellPrice,
     product?.productPrice,
     product?.price,
@@ -141,7 +142,8 @@ async function getCJAccessToken(apiKey) {
 async function searchCJPage(
   accessToken,
   query,
-  page
+  page,
+  size
 ) {
   const url = new URL(
     `${CJ_BASE_URL}/product/listV2`
@@ -154,7 +156,7 @@ async function searchCJPage(
 
   url.searchParams.set(
     "size",
-    String(PAGE_SIZE)
+    String(size)
   );
 
   url.searchParams.set(
@@ -226,18 +228,49 @@ export async function GET(request) {
         .get("q")
         ?.trim();
 
+    const requestedPage =
+      Number(
+        searchParams.get("page") ||
+          "1"
+      );
+
+    const requestedSize =
+      Number(
+        searchParams.get("size") ||
+          String(DEFAULT_PAGE_SIZE)
+      );
+
     if (!query) {
       return NextResponse.json(
         {
           products: [],
           query: "",
           searchedCJ: false,
+          totalRecords: 0,
+          returnedProducts: 0,
+          page: 1,
+          size: DEFAULT_PAGE_SIZE,
           message:
             "Enter a product to search.",
         },
         { status: 400 }
       );
     }
+
+    const page =
+      Number.isFinite(requestedPage) &&
+      requestedPage >= 1
+        ? Math.floor(requestedPage)
+        : 1;
+
+    const size =
+      Number.isFinite(requestedSize) &&
+      requestedSize >= 1
+        ? Math.min(
+            Math.floor(requestedSize),
+            MAX_PAGE_SIZE
+          )
+        : DEFAULT_PAGE_SIZE;
 
     const apiKey =
       process.env.CJ_API_KEY;
@@ -248,6 +281,10 @@ export async function GET(request) {
           products: [],
           query,
           searchedCJ: false,
+          totalRecords: 0,
+          returnedProducts: 0,
+          page,
+          size,
           message:
             "CJ API key is not configured.",
         },
@@ -257,6 +294,10 @@ export async function GET(request) {
 
     /*
       Authenticate with CJ.
+
+      The access token stays on
+      the server and is never sent
+      to the customer's browser.
     */
 
     const accessToken =
@@ -265,106 +306,48 @@ export async function GET(request) {
       );
 
     /*
-      Search several CJ pages instead
-      of stopping after the first 20
-      products.
+      Search the requested CJ page.
 
-      Example:
+      The frontend normally requests
+      100 products at a time.
 
-      page 1 = up to 50
-      page 2 = up to 50
-      page 3 = up to 50
-
-      Maximum returned = 150
+      When the customer clicks
+      "Load more products", page.js
+      requests page 2, page 3, etc.
     */
 
-    const allProducts = [];
-
-    let totalRecords = 0;
-
-    for (
-      let page = 1;
-      page <= MAX_PAGES;
-      page++
-    ) {
-      const data =
-        await searchCJPage(
-          accessToken,
-          query,
-          page
-        );
-
-      const pageProducts =
-        extractProducts(data);
-
-      totalRecords =
-        Number(
-          data?.data
-            ?.totalRecords
-        ) ||
-        totalRecords ||
-        0;
-
-      allProducts.push(
-        ...pageProducts
+    const data =
+      await searchCJPage(
+        accessToken,
+        query,
+        page,
+        size
       );
 
-      /*
-        Stop early if CJ doesn't
-        have another page.
-      */
+    const pageProducts =
+      extractProducts(data);
 
-      if (
-        pageProducts.length <
-        PAGE_SIZE
-      ) {
-        break;
-      }
-
-      /*
-        Stop once we have enough
-        products for this request.
-      */
-
-      if (
-        allProducts.length >=
-        MAX_PRODUCTS
-      ) {
-        break;
-      }
-
-      /*
-        If CJ tells us the total
-        number of records and we've
-        reached them, stop.
-      */
-
-      if (
-        totalRecords > 0 &&
-        allProducts.length >=
-          totalRecords
-      ) {
-        break;
-      }
-    }
+    const totalRecords =
+      Number(
+        data?.data?.totalRecords
+      ) || 0;
 
     /*
-      Remove products that don't have
-      enough information to display
-      properly.
+      Keep only products that have
+      a usable name, image, and price.
     */
 
     const usableProducts =
-      allProducts.filter(
+      pageProducts.filter(
         productLooksUsable
       );
 
     /*
-      Remove duplicate products.
+      Remove duplicates from this
+      response page.
 
-      CJ can sometimes return the
-      same product in different
-      groups/pages.
+      This prevents CJ duplicate
+      records from appearing twice.
     */
 
     const uniqueProducts =
@@ -389,29 +372,46 @@ export async function GET(request) {
             }
           )
         ).values()
-      ).slice(
-        0,
-        MAX_PRODUCTS
       );
+
+    /*
+      Determine whether another page
+      is available.
+
+      If CJ tells us the total number
+      of records, use that.
+
+      Otherwise, a full page means
+      there may be another page.
+    */
+
+    const hasMore =
+      totalRecords > 0
+        ? page * size <
+          totalRecords
+        : uniqueProducts.length >=
+          size;
 
     return NextResponse.json({
       products:
         uniqueProducts,
+
       query,
+
       searchedCJ: true,
+
       totalRecords:
         totalRecords ||
         uniqueProducts.length,
+
       returnedProducts:
         uniqueProducts.length,
-      pagesChecked:
-        Math.min(
-          MAX_PAGES,
-          Math.ceil(
-            allProducts.length /
-              PAGE_SIZE
-          ) || 1
-        ),
+
+      page,
+
+      size,
+
+      hasMore,
     });
   } catch (error) {
     console.error(
@@ -423,11 +423,13 @@ export async function GET(request) {
       {
         products: [],
         searchedCJ: true,
+        totalRecords: 0,
+        returnedProducts: 0,
         message:
-          "Unable to connect to the CJ supplier catalog.",
+          "Unable to connect to the product catalog right now. Please try again.",
         details:
           error?.message ||
-          "Unknown CJ error.",
+          "Unknown catalog error.",
       },
       { status: 502 }
     );
