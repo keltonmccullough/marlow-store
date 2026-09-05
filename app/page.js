@@ -1,93 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const HOME_PRODUCT_LIMIT = 375;
+const PAGE_SIZE = 100;
 
-const demoProducts = [
-  {
-    id: "demo-1",
-    name: "Wireless Noise-Canceling Headphones",
-    price: 39.99,
-    image:
-      "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=900&q=80",
-    category: "Electronics",
-    description:
-      "Wireless headphones with comfortable cushions and clear sound.",
-  },
-  {
-    id: "demo-2",
-    name: "Premium Smart Watch",
-    price: 49.99,
-    image:
-      "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=900&q=80",
-    category: "Electronics",
-    description:
-      "Modern smartwatch design for everyday use.",
-  },
-  {
-    id: "demo-3",
-    name: "Insulated Stainless Steel Bottle",
-    price: 24.99,
-    image:
-      "https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&w=900&q=80",
-    category: "Home",
-    description:
-      "Reusable insulated bottle for home, work, or travel.",
-  },
-  {
-    id: "demo-4",
-    name: "Portable Wireless Speaker",
-    price: 34.99,
-    image:
-      "https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?auto=format&fit=crop&w=900&q=80",
-    category: "Electronics",
-    description:
-      "Portable wireless speaker for music anywhere.",
-  },
-  {
-    id: "demo-5",
-    name: "Modern LED Desk Lamp",
-    price: 29.99,
-    image:
-      "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=900&q=80",
-    category: "Home",
-    description:
-      "Clean modern lighting for your desk or workspace.",
-  },
-  {
-    id: "demo-6",
-    name: "Everyday Travel Backpack",
-    price: 44.99,
-    image:
-      "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=900&q=80",
-    category: "Travel",
-    description:
-      "Roomy backpack for everyday travel and commuting.",
-  },
-  {
-    id: "demo-7",
-    name: "Ultra Soft Home Throw",
-    price: 32.99,
-    image:
-      "https://images.unsplash.com/photo-1584100936595-c0654b55a2e2?auto=format&fit=crop&w=900&q=80",
-    category: "Home",
-    description:
-      "Soft decorative throw blanket for your home.",
-  },
-  {
-    id: "demo-8",
-    name: "Kitchen Organization Collection",
-    price: 27.99,
-    image:
-      "https://images.unsplash.com/photo-1556911220-bff31c812dba?auto=format&fit=crop&w=900&q=80",
-    category: "Home",
-    description:
-      "Useful organization products for your kitchen.",
-  },
-];
-
-const categories = [
+const CATEGORIES = [
   "All",
   "Electronics",
   "Home",
@@ -99,117 +17,184 @@ const categories = [
   "Tools",
 ];
 
-const categorySearches = {
+const CATEGORY_SEARCHES = {
+  All: "popular products",
+  Electronics: "electronics",
+  Home: "home kitchen decor",
+  Clothing: "clothing apparel fashion",
+  Beauty: "beauty skincare",
+  Sports: "fitness sports",
+  Toys: "toys kids",
+  Travel: "travel luggage",
+  Tools: "tools",
+};
+
+const CATEGORY_VARIANTS = {
   Electronics: [
     "electronics",
     "phone accessories",
-    "headphones",
-    "smart watch",
     "computer accessories",
-    "speakers",
+    "audio headphones",
+    "smart devices",
     "chargers",
+    "cables",
+    "bluetooth",
+    "gaming",
+    "cameras",
+    "watches",
+    "power banks",
   ],
+
   Home: [
     "home",
-    "kitchen",
+    "home kitchen",
     "home decor",
-    "storage",
-    "lighting",
-    "bedding",
+    "kitchen organization",
+    "household",
+    "home accessories",
+    "storage organization",
     "bathroom",
+    "bedroom",
+    "living room",
+    "garden",
   ],
+
   Clothing: [
     "clothing",
+    "apparel",
+    "fashion",
+    "women clothing",
+    "women apparel",
+    "men clothing",
+    "men apparel",
     "shirts",
     "pants",
     "dresses",
-    "hoodies",
+    "skirts",
     "jackets",
+    "hoodies",
     "shoes",
+    "sneakers",
+    "socks",
     "bags",
   ],
+
   Beauty: [
     "beauty",
-    "makeup",
     "skincare",
+    "makeup",
     "hair care",
+    "personal care",
     "cosmetics",
-    "grooming",
+    "nail",
+    "perfume",
+    "hair accessories",
+    "face care",
+    "body care",
   ],
+
   Sports: [
-    "sports",
     "fitness",
+    "sports",
     "exercise",
-    "gym",
     "outdoor sports",
+    "gym accessories",
+    "workout",
+    "yoga",
+    "running",
+    "cycling",
     "camping",
+    "hiking",
+    "golf",
   ],
+
   Toys: [
     "toys",
     "kids toys",
+    "children toys",
+    "baby toys",
     "games",
-    "puzzles",
-    "RC toys",
     "educational toys",
+    "puzzles",
+    "dolls",
+    "outdoor toys",
+    "learning toys",
   ],
+
   Travel: [
     "travel",
     "luggage",
-    "suitcase",
-    "backpack",
     "travel accessories",
-    "travel organizers",
+    "suitcases",
+    "travel bags",
+    "backpacks",
+    "organizers",
+    "passport",
+    "toiletry bags",
   ],
+
   Tools: [
     "tools",
-    "hand tools",
     "hardware",
-    "automotive tools",
-    "tool accessories",
+    "hand tools",
+    "power tools",
+    "home improvement",
+    "repair tools",
+    "workshop",
+    "construction",
+    "screwdriver",
+    "wrench",
+    "pliers",
+    "drill",
   ],
 };
 
-function getSupplierName(item) {
+/* =========================================================
+   PRODUCT HELPERS
+========================================================= */
+
+function getSupplierName(product) {
   return (
-    item?.nameEn ||
-    item?.name ||
-    item?.productName ||
-    item?.title ||
-    item?.productTitle ||
+    product?.productName ||
+    product?.name ||
+    product?.title ||
+    product?.product?.productName ||
+    product?.product?.name ||
+    product?.product?.title ||
     "Marlow Product"
   );
 }
 
-function getSupplierImage(item) {
+function getSupplierImage(product) {
   return (
-    item?.bigImage ||
-    item?.image ||
-    item?.imageUrl ||
-    item?.productImage ||
-    item?.productImageUrl ||
-    item?.skuImage ||
+    product?.productImage ||
+    product?.image ||
+    product?.imageUrl ||
+    product?.product?.productImage ||
+    product?.product?.image ||
+    product?.product?.imageUrl ||
+    product?.skuImage ||
+    product?.product?.skuImage ||
     ""
   );
 }
 
-function getSupplierCost(item) {
+function getSupplierCost(product) {
   const possiblePrices = [
-    item?.nowPrice,
-    item?.discountPrice,
-    item?.sellPrice,
-    item?.productPrice,
-    item?.price,
-    item?.minPrice,
-    item?.costPrice,
+    product?.sellPrice,
+    product?.price,
+    product?.cost,
+    product?.productPrice,
+    product?.product?.sellPrice,
+    product?.product?.price,
+    product?.product?.cost,
+    product?.product?.productPrice,
   ];
 
   for (const value of possiblePrices) {
     const number = Number(value);
 
-    if (
-      Number.isFinite(number) &&
-      number > 0
-    ) {
+    if (Number.isFinite(number) && number > 0) {
       return number;
     }
   }
@@ -217,61 +202,123 @@ function getSupplierCost(item) {
   return 0;
 }
 
-function calculateMarlowPrice(cost) {
-  const number = Number(cost);
-
-  if (
-    !Number.isFinite(number) ||
-    number <= 0
-  ) {
-    return 0;
-  }
-
-  let markup = 0.1;
-
-  if (number < 10) {
-    markup = 0.25;
-  } else if (number < 25) {
-    markup = 0.22;
-  } else if (number < 50) {
-    markup = 0.18;
-  } else if (number < 100) {
-    markup = 0.15;
-  } else if (number < 200) {
-    markup = 0.12;
-  }
-
-  return Number(
-    Math.max(
-      number * (1 + markup),
-      number + 1
-    ).toFixed(2)
+function getCJProductId(product) {
+  return (
+    product?.pid ||
+    product?.productId ||
+    product?.id ||
+    product?.product?.pid ||
+    product?.product?.productId ||
+    product?.product?.id ||
+    null
   );
 }
 
-function inferMarlowCategory(item) {
-  const text = `
-    ${item?.nameEn || ""}
-    ${item?.name || ""}
-    ${item?.productName || ""}
-    ${item?.productTitle || ""}
-    ${item?.threeCategoryName || ""}
-    ${item?.twoCategoryName || ""}
-    ${item?.oneCategoryName || ""}
-    ${item?.categoryName || ""}
-    ${item?.description || ""}
-  `.toLowerCase();
+/*
+ * This is the main duplicate-protection system.
+ *
+ * If CJ gives us a real product ID, that ID is always preferred.
+ * If a product does not contain an ID, name + image is used as
+ * a fallback fingerprint.
+ */
+function getUniqueProductKey(product) {
+  const cjId = getCJProductId(product);
 
-  if (
-    /phone|iphone|android|charger|cable|headphone|earbud|speaker|computer|laptop|tablet|watch|camera|electronic|keyboard|mouse|usb|bluetooth|gaming console/.test(
-      text
-    )
-  ) {
-    return "Electronics";
+  if (cjId) {
+    return `cj-${String(cjId).trim()}`;
   }
 
+  const name = String(
+    getSupplierName(product) || ""
+  )
+    .trim()
+    .toLowerCase();
+
+  const image = String(
+    getSupplierImage(product) || ""
+  )
+    .trim()
+    .toLowerCase();
+
+  return `fallback-${name}|${image}`;
+}
+
+function uniqueProducts(products) {
+  const seen = new Set();
+  const unique = [];
+
+  for (const product of products || []) {
+    if (!product) continue;
+
+    const key = getUniqueProductKey(product);
+
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    unique.push(product);
+  }
+
+  return unique;
+}
+
+/* =========================================================
+   MARLOW PRICING
+========================================================= */
+
+function calculateMarlowPrice(cost) {
+  const amount = Number(cost) || 0;
+
+  let markup = 0.25;
+
+  if (amount >= 200) {
+    markup = 0.10;
+  } else if (amount >= 100) {
+    markup = 0.12;
+  } else if (amount >= 50) {
+    markup = 0.15;
+  } else if (amount >= 25) {
+    markup = 0.18;
+  } else if (amount >= 10) {
+    markup = 0.22;
+  }
+
+  return Math.max(
+    amount * (1 + markup),
+    amount + 1
+  );
+}
+
+/* =========================================================
+   CATEGORY CLASSIFICATION
+========================================================= */
+
+function inferMarlowCategory(product) {
+  const text = (
+    getSupplierName(product) +
+    " " +
+    (product?.categoryName || "") +
+    " " +
+    (product?.category || "") +
+    " " +
+    (product?.categoryId || "") +
+    " " +
+    (product?.productType || "") +
+    " " +
+    (product?.product?.categoryName || "") +
+    " " +
+    (product?.product?.category || "")
+  ).toLowerCase();
+
+  /*
+   * Check clothing before electronics because products such as
+   * "smart watch clothing..." should still be classified by the
+   * strongest clothing terms when applicable.
+   */
+
   if (
-    /dress|shirt|pants|jeans|hoodie|jacket|coat|clothing|clothes|skirt|sweater|socks|bra|underwear|shoe|sneaker|sandals|boots|footwear|fashion/.test(
+    /shirt|dress|pants|jeans|jacket|coat|hoodie|sweater|clothing|apparel|skirt|bra|lingerie|shoe|sneaker|sock|clothes|fashion|blouse|shorts|underwear|vest|cardigan|activewear/.test(
       text
     )
   ) {
@@ -279,7 +326,7 @@ function inferMarlowCategory(item) {
   }
 
   if (
-    /makeup|cosmetic|skincare|skin care|lipstick|mascara|foundation|serum|beauty|hair care|shampoo|conditioner|grooming|nail/.test(
+    /makeup|cosmetic|beauty|skin|skincare|serum|lipstick|mascara|hair|shampoo|conditioner|nail|perfume|personal care|foundation|eyelash|eyebrow|moisturizer|cleanser|toner|brush set/.test(
       text
     )
   ) {
@@ -287,15 +334,7 @@ function inferMarlowCategory(item) {
   }
 
   if (
-    /fitness|gym|exercise|sport|sports|workout|yoga|football|basketball|soccer|baseball|camping|hiking|outdoor/.test(
-      text
-    )
-  ) {
-    return "Sports";
-  }
-
-  if (
-    /toy|toys|kids|children|puzzle|game|rc car|remote control|educational|doll|lego/.test(
+    /toy|toys|kids|kid|children|child|baby|game|puzzle|doll|lego|educational|learning toy|play/.test(
       text
     )
   ) {
@@ -303,7 +342,7 @@ function inferMarlowCategory(item) {
   }
 
   if (
-    /travel|luggage|suitcase|backpack|passport|travel bag|organizer|camping bag/.test(
+    /travel|luggage|suitcase|backpack|passport|travel bag|organizer|carry-on|carry on|duffel/.test(
       text
     )
   ) {
@@ -311,7 +350,7 @@ function inferMarlowCategory(item) {
   }
 
   if (
-    /tool|hardware|drill|screwdriver|wrench|pliers|hammer|automotive|repair|workshop/.test(
+    /tool|hardware|drill|screwdriver|wrench|pliers|saw|repair|workshop|construction|power tool|hand tool|socket|hammer/.test(
       text
     )
   ) {
@@ -319,650 +358,828 @@ function inferMarlowCategory(item) {
   }
 
   if (
-    /home|kitchen|bathroom|storage|lamp|lighting|decor|bedding|blanket|pillow|furniture|household/.test(
+    /fitness|gym|sport|sports|exercise|yoga|running|cycling|camping|hiking|outdoor|workout|football|basketball|golf|baseball|soccer|swimming|training/.test(
       text
     )
   ) {
-    return "Home";
+    return "Sports";
+  }
+
+  if (
+    /phone|iphone|android|tablet|computer|laptop|keyboard|mouse|headphone|earbud|speaker|charger|cable|usb|camera|watch|electronic|bluetooth|power bank|gaming|monitor|microphone|projector|router|wifi|wireless|smart device|smartwatch/.test(
+      text
+    )
+  ) {
+    return "Electronics";
   }
 
   return "Home";
 }
 
-function getSearchIntent(query) {
-  const q = String(query || "")
-    .toLowerCase()
-    .trim();
+function convertSupplierProduct(product, index = 0) {
+  const name = getSupplierName(product);
+  const image = getSupplierImage(product);
+  const cost = getSupplierCost(product);
 
-  if (
-    /cheap|cheapest|low price|low priced|budget|affordable|inexpensive/.test(
-      q
-    )
-  ) {
-    return "cheap";
+  if (!name || !image || !cost) {
+    return null;
   }
 
-  if (
-    /expensive|highest price|high price|premium|luxury|most expensive/.test(
-      q
-    )
-  ) {
-    return "expensive";
-  }
+  const supplierId = getCJProductId(product);
 
-  if (
-    /deal|deals|discount|sale|clearance|bargain/.test(
-      q
-    )
-  ) {
-    return "deals";
-  }
-
-  return "relevance";
-}
-
-function normalizeSearchQuery(query) {
-  const original = String(query || "")
-    .toLowerCase()
-    .replace(/[’]/g, "'")
-    .trim();
-
-  if (!original) {
-    return "popular products";
-  }
-
-  if (
-    /women'?s clothing|womens clothing|women clothes|ladies clothing|ladies clothes/.test(
-      original
-    )
-  ) {
-    return "women clothing";
-  }
-
-  if (
-    /men'?s clothing|mens clothing|men clothes/.test(
-      original
-    )
-  ) {
-    return "men clothing";
-  }
-
-  if (
-    /\bkids\b|\bchildren\b|\bchildrens\b/.test(
-      original
-    )
-  ) {
-    if (/toy|game|play/.test(original)) {
-      return "kids toys";
-    }
-
-    return "kids products";
-  }
-
-  if (
-    /best sellers|best selling|bestsellers|top sellers/.test(
-      original
-    )
-  ) {
-    return "best selling products";
-  }
-
-  if (
-    /gifts|gift ideas|gift/.test(original)
-  ) {
-    return "gifts";
-  }
-
-  if (
-    /new arrivals|new products|new items/.test(
-      original
-    )
-  ) {
-    return "new products";
-  }
-
-  let cleaned = original;
-
-  cleaned = cleaned
-    .replace(
-      /\bcheapest\b|\bcheap\b|\blow price\b|\blow priced\b|\bbudget\b|\baffordable\b|\binexpensive\b/g,
-      " "
-    )
-    .replace(
-      /\bmost expensive\b|\bhighest price\b|\bhigh price\b|\bexpensive\b|\bpremium\b|\bluxury\b/g,
-      " "
-    )
-    .replace(
-      /\bdeals?\b|\bdiscounts?\b|\bsale\b|\bclearance\b|\bbargain\b/g,
-      " "
-    )
-    .replace(
-      /\bbest\b/g,
-      " "
-    )
-    .replace(
-      /\s+/g,
-      " "
-    )
-    .trim();
-
-  return cleaned || "popular products";
-}
-
-function productMatchesQuery(
-  product,
-  query
-) {
-  const q = String(query || "")
-    .toLowerCase()
-    .trim();
-
-  if (!q) {
-    return true;
-  }
-
-  const text = `
-    ${product?.name || ""}
-    ${product?.category || ""}
-    ${product?.description || ""}
-    ${product?.subcategory || ""}
-  `.toLowerCase();
-
-  const words = q
-    .split(/\s+/)
-    .filter(Boolean);
-
-  if (words.length === 1) {
-    return text.includes(words[0]);
-  }
-
-  return words.some((word) =>
-    text.includes(word)
-  );
-}
-
-function matchesSpecialSearch(
-  product,
-  query
-) {
-  const q = String(query || "")
-    .toLowerCase()
-    .trim();
-
-  const text = `
-    ${product?.name || ""}
-    ${product?.category || ""}
-    ${product?.description || ""}
-    ${product?.subcategory || ""}
-  `.toLowerCase();
-
-  if (
-    /\bshoes?\b|\bsneakers?\b|\bfootwear\b|\bboots?\b|\bsandals?\b/.test(
-      q
-    )
-  ) {
-    return /shoe|sneaker|boot|sandal|footwear|heel|slipper|loafer|flat/.test(
-      text
-    );
-  }
-
-  if (
-    /\belectronics?\b/.test(q)
-  ) {
-    return (
-      product?.category ===
-      "Electronics"
-    );
-  }
-
-  if (
-    /phone accessories/.test(q)
-  ) {
-    return /phone|iphone|android|charger|cable|case|screen protector|stand|holder|power bank|usb/.test(
-      text
-    );
-  }
-
-  return true;
-}
-
-function convertSupplierProduct(
-  item,
-  index = 0
-) {
-  const cost =
-    getSupplierCost(item);
+  const id =
+    supplierId ||
+    `marlow-${index}-${String(name)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")}`;
 
   const category =
-    inferMarlowCategory(item);
-
-  const originalSellPrice =
-    Number(item?.sellPrice || 0);
-
-  const originalNowPrice =
-    Number(item?.nowPrice || 0);
-
-  const originalDiscountPrice =
-    Number(
-      item?.discountPrice || 0
-    );
-
-  let discountPercent = 0;
-
-  if (
-    originalSellPrice > 0 &&
-    originalNowPrice > 0 &&
-    originalNowPrice <
-      originalSellPrice
-  ) {
-    discountPercent =
-      ((originalSellPrice -
-        originalNowPrice) /
-        originalSellPrice) *
-      100;
-  } else if (
-    originalSellPrice > 0 &&
-    originalDiscountPrice > 0 &&
-    originalDiscountPrice <
-      originalSellPrice
-  ) {
-    discountPercent =
-      ((originalSellPrice -
-        originalDiscountPrice) /
-        originalSellPrice) *
-      100;
-  }
+    product?.marlowCategory ||
+    inferMarlowCategory(product);
 
   return {
-    id:
-      item?.id ||
-      item?.productId ||
-      item?.pid ||
-      item?.sku ||
-      `live-${Date.now()}-${index}`,
-
-    name:
-      getSupplierName(item),
-
-    price:
-      calculateMarlowPrice(cost),
-
-    cost,
-
-    image:
-      getSupplierImage(item),
-
+    id: String(id),
+    name: String(name),
+    price: Number(
+      calculateMarlowPrice(cost).toFixed(2)
+    ),
+    cost: Number(cost),
+    image: String(image),
     category,
-
-    subcategory:
-      item?.threeCategoryName ||
-      item?.twoCategoryName ||
-      item?.oneCategoryName ||
-      "",
-
     description:
-      item?.description ||
-      "A great product selected for the Marlow collection.",
-
-    sku:
-      item?.sku || "",
-
-    sourceId:
-      item?.id ||
-      item?.productId ||
-      "",
-
-    discountPrice:
-      originalDiscountPrice,
-
-    discountPercent,
-
-    listedNum:
-      Number(item?.listedNum || 0),
-
-    inventory:
-      Number(
-        item?.warehouseInventoryNum ||
-          item?.totalVerifiedInventory ||
-          0
-      ),
+      product?.description ||
+      product?.productDescEn ||
+      product?.descriptionEn ||
+      product?.product?.description ||
+      product?.product?.productDescEn ||
+      "Quality products selected for Marlow customers.",
+    raw: product,
   };
 }
 
-function sortProducts(
-  products,
-  intent
-) {
-  const copy = [...products];
+function sortProducts(products) {
+  return [...products].sort((a, b) => {
+    const aName = String(a?.name || "").toLowerCase();
+    const bName = String(b?.name || "").toLowerCase();
 
-  if (intent === "cheap") {
-    return copy.sort(
-      (a, b) =>
-        a.price - b.price
-    );
-  }
-
-  if (intent === "expensive") {
-    return copy.sort(
-      (a, b) =>
-        b.price - a.price
-    );
-  }
-
-  if (intent === "deals") {
-    return copy.sort(
-      (a, b) => {
-        const discountDifference =
-          Number(
-            b?.discountPercent || 0
-          ) -
-          Number(
-            a?.discountPercent || 0
-          );
-
-        if (
-          discountDifference !== 0
-        ) {
-          return discountDifference;
-        }
-
-        return (
-          Number(
-            b?.listedNum || 0
-          ) -
-          Number(
-            a?.listedNum || 0
-          )
-        );
-      }
-    );
-  }
-
-  return copy;
+    return aName.localeCompare(bName);
+  });
 }
 
-function diversifyProducts(
-  products,
-  limit = HOME_PRODUCT_LIMIT
-) {
-  const categoryNames =
-    categories.filter(
-      (item) => item !== "All"
-    );
-
-  const groups = new Map();
-
-  categoryNames.forEach(
-    (category) => {
-      groups.set(
-        category,
-        []
-      );
-    }
-  );
-
-  const leftovers = [];
-
-  products.forEach(
-    (product) => {
-      if (
-        groups.has(
-          product.category
-        )
-      ) {
-        groups
-          .get(product.category)
-          .push(product);
-      } else {
-        leftovers.push(product);
-      }
-    }
-  );
-
-  const result = [];
-  const positions = new Map();
-
-  categoryNames.forEach(
-    (category) => {
-      positions.set(
-        category,
-        0
-      );
-    }
-  );
-
-  let madeProgress = true;
-
-  while (
-    result.length < limit &&
-    madeProgress
-  ) {
-    madeProgress = false;
-
-    for (const category of categoryNames) {
-      const list =
-        groups.get(category) ||
-        [];
-
-      const position =
-        positions.get(
-          category
-        ) || 0;
-
-      if (
-        position <
-        list.length
-      ) {
-        result.push(
-          list[position]
-        );
-
-        positions.set(
-          category,
-          position + 1
-        );
-
-        madeProgress = true;
-      }
-
-      if (
-        result.length >=
-        limit
-      ) {
-        break;
-      }
-    }
+function matchesCategory(product, category) {
+  if (category === "All") {
+    return true;
   }
 
-  for (
-    const product of leftovers
-  ) {
-    if (
-      result.length >= limit
-    ) {
+  return product?.category === category;
+}
+
+/* =========================================================
+   CJ API
+========================================================= */
+
+async function fetchCJPage(query, page) {
+  const params = new URLSearchParams();
+
+  params.set("q", query);
+  params.set("page", String(page));
+  params.set("size", String(PAGE_SIZE));
+
+  const response = await fetch(
+    `/api/search?${params.toString()}`,
+    {
+      cache: "no-store",
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Search request failed: ${response.status}`
+    );
+  }
+
+  const data = await response.json();
+
+  if (!data || typeof data !== "object") {
+    throw new Error("Invalid catalog response.");
+  }
+
+  return data;
+}
+
+/*
+ * IMPORTANT:
+ *
+ * There is NO artificial maxProducts limit here.
+ * There is NO artificial maxPages limit here.
+ *
+ * CJ controls when the catalog is exhausted through hasMore.
+ *
+ * This means:
+ *
+ * page 1
+ * page 2
+ * page 3
+ * page 4
+ * ...
+ * until CJ says there are no more pages.
+ */
+async function fetchAllCJPages(query) {
+  let page = 1;
+  let hasMore = true;
+
+  const allProducts = [];
+  const seen = new Set();
+
+  while (hasMore) {
+    const data = await fetchCJPage(
+      query,
+      page
+    );
+
+    const batch = Array.isArray(data?.products)
+      ? data.products
+      : [];
+
+    if (batch.length === 0) {
       break;
     }
 
-    if (
-      !result.some(
-        (item) =>
-          item.id ===
-          product.id
-      )
-    ) {
-      result.push(product);
+    for (const product of batch) {
+      const key = getUniqueProductKey(product);
+
+      if (seen.has(key)) {
+        continue;
+      }
+
+      seen.add(key);
+      allProducts.push(product);
+    }
+
+    hasMore =
+      Boolean(data?.hasMore) &&
+      batch.length > 0;
+
+    page += 1;
+
+    /*
+     * Prevent a broken API response from creating an
+     * accidental infinite loop.
+     *
+     * This is NOT a product limit.
+     * It only stops if CJ keeps returning the exact
+     * same page forever.
+     */
+    if (page > 1 && batch.length === 0) {
+      break;
     }
   }
 
-  return result.slice(
-    0,
-    limit
+  return allProducts;
+}
+
+/* =========================================================
+   CATEGORY LOADING
+========================================================= */
+
+async function fetchCategoryProducts(category) {
+  const queries =
+    CATEGORY_VARIANTS[category] || [
+      CATEGORY_SEARCHES[category],
+    ];
+
+  let products = [];
+
+  /*
+   * Each search variant is exhausted completely.
+   *
+   * Results are combined and deduplicated afterward.
+   */
+  for (const query of queries) {
+    if (!query) continue;
+
+    try {
+      const results =
+        await fetchAllCJPages(query);
+
+      products = uniqueProducts([
+        ...products,
+        ...results,
+      ]);
+    } catch (error) {
+      console.error(
+        `Category search failed for ${query}`,
+        error
+      );
+    }
+  }
+
+  const converted = products
+    .map((product, index) =>
+      convertSupplierProduct(
+        product,
+        index
+      )
+    )
+    .filter(Boolean);
+
+  const categorized = converted.filter(
+    (product) =>
+      matchesCategory(
+        product,
+        category
+      )
+  );
+
+  /*
+   * If the classifier couldn't identify any products,
+   * keep the actual CJ results rather than showing
+   * "no products" incorrectly.
+   */
+  if (categorized.length === 0) {
+    return sortProducts(
+      uniqueProducts(converted)
+    );
+  }
+
+  return sortProducts(
+    uniqueProducts(categorized)
   );
 }
+
+/* =========================================================
+   PRODUCT CARD
+========================================================= */
 
 function ProductCard({
   product,
   onOpen,
+  onAdd,
 }) {
   return (
-    <button
-      className="product-card"
-      onClick={() =>
-        onOpen(product)
-      }
-      type="button"
-    >
-      <div className="product-image-wrap">
-        {product.image ? (
-          <img
-            src={product.image}
-            alt={product.name}
-            className="product-image"
-            loading="lazy"
-          />
-        ) : (
-          <div className="image-placeholder">
-            M
-          </div>
-        )}
-      </div>
+    <article className="product-card">
+      <button
+        className="product-image-button"
+        onClick={() =>
+          onOpen(product)
+        }
+        aria-label={`View ${product.name}`}
+      >
+        <img
+          src={product.image}
+          alt={product.name}
+          className="product-image"
+          loading="lazy"
+        />
+      </button>
 
       <div className="product-info">
         <div className="product-category">
           {product.category}
         </div>
 
-        <h3>
+        <button
+          className="product-name"
+          onClick={() =>
+            onOpen(product)
+          }
+        >
           {product.name}
-        </h3>
-
-        <p>
-          {product.description}
-        </p>
+        </button>
 
         <div className="product-bottom">
-          <strong>
-            $
-            {Number(
-              product.price || 0
+          <strong className="product-price">
+            ${Number(
+              product.price
             ).toFixed(2)}
           </strong>
 
-          <span className="view-product">
-            View
-          </span>
+          <button
+            className="add-button"
+            onClick={() =>
+              onAdd(product)
+            }
+          >
+            Add
+          </button>
         </div>
       </div>
-    </button>
+    </article>
   );
 }
 
-function ProductSection({
-  title,
+/* =========================================================
+   PRODUCT GRID
+========================================================= */
+
+function ProductGrid({
   products,
   onOpen,
-  onSeeAll,
-  emptyText = "More products coming soon.",
+  onAdd,
 }) {
-  return (
-    <section className="product-section">
-      <div className="section-heading">
-        <div>
-          <p className="eyebrow">
-            MARLOW COLLECTION
-          </p>
+  if (!products.length) {
+    return (
+      <div className="empty-products">
+        <h3>No products available</h3>
 
-          <h2>{title}</h2>
-        </div>
-
-        {products.length > 0 &&
-        onSeeAll ? (
-          <button
-            className="see-all"
-            type="button"
-            onClick={onSeeAll}
-          >
-            See all
-          </button>
-        ) : null}
+        <p>
+          Try another category or search
+          for something else.
+        </p>
       </div>
+    );
+  }
 
-      {products.length > 0 ? (
-        <div className="product-grid">
-          {products.map(
-            (product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                onOpen={onOpen}
-              />
-            )
-          )}
-        </div>
-      ) : (
-        <div className="empty-section">
-          {emptyText}
-        </div>
-      )}
-    </section>
+  return (
+    <div className="product-grid">
+      {products.map((product) => (
+        <ProductCard
+          key={product.id}
+          product={product}
+          onOpen={onOpen}
+          onAdd={onAdd}
+        />
+      ))}
+    </div>
   );
 }
+
+/* =========================================================
+   PRODUCT MODAL
+========================================================= */
+
+function ProductModal({
+  product,
+  onClose,
+  onAdd,
+}) {
+  if (!product) {
+    return null;
+  }
+
+  return (
+    <div
+      className="modal-backdrop"
+      onClick={onClose}
+    >
+      <div
+        className="product-modal"
+        onClick={(event) =>
+          event.stopPropagation()
+        }
+      >
+        <button
+          className="close-button"
+          onClick={onClose}
+          aria-label="Close"
+        >
+          ×
+        </button>
+
+        <div className="modal-image-wrap">
+          <img
+            src={product.image}
+            alt={product.name}
+            className="modal-image"
+          />
+        </div>
+
+        <div className="modal-details">
+          <span className="modal-category">
+            {product.category}
+          </span>
+
+          <h2>{product.name}</h2>
+
+          <div className="modal-price">
+            ${Number(
+              product.price
+            ).toFixed(2)}
+          </div>
+
+          <p>
+            {product.description}
+          </p>
+
+          <button
+            className="modal-add-button"
+            onClick={() => {
+              onAdd(product);
+              onClose();
+            }}
+          >
+            Add to Cart
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================
+   ACCOUNT MODAL
+========================================================= */
+
+function AccountModal({
+  account,
+  onClose,
+  onCreateAccount,
+  onSignOut,
+}) {
+  const [mode, setMode] =
+    useState("signin");
+
+  const [name, setName] =
+    useState("");
+
+  const [email, setEmail] =
+    useState("");
+
+  const [password, setPassword] =
+    useState("");
+
+  const [accountError, setAccountError] =
+    useState("");
+
+  function handleSubmit(event) {
+    event.preventDefault();
+
+    setAccountError("");
+
+    const cleanName =
+      name.trim();
+
+    const cleanEmail =
+      email.trim().toLowerCase();
+
+    if (!cleanEmail) {
+      setAccountError(
+        "Please enter your email address."
+      );
+      return;
+    }
+
+    if (!password) {
+      setAccountError(
+        "Please enter your password."
+      );
+      return;
+    }
+
+    if (
+      mode === "create" &&
+      !cleanName
+    ) {
+      setAccountError(
+        "Please enter your name."
+      );
+      return;
+    }
+
+    if (mode === "create") {
+      onCreateAccount({
+        name: cleanName,
+        email: cleanEmail,
+        password,
+      });
+
+      setPassword("");
+      return;
+    }
+
+    /*
+     * The parent handles the stored account
+     * and validates the sign-in.
+     */
+    onCreateAccount({
+      name: "",
+      email: cleanEmail,
+      password,
+      signingIn: true,
+    });
+  }
+
+  return (
+    <div
+      className="account-backdrop"
+      onClick={onClose}
+    >
+      <div
+        className="account-modal"
+        onClick={(event) =>
+          event.stopPropagation()
+        }
+      >
+        <button
+          className="close-button"
+          onClick={onClose}
+          aria-label="Close"
+        >
+          ×
+        </button>
+
+        {account ? (
+          <>
+            <span className="eyebrow">
+              My Marlow
+            </span>
+
+            <h2>
+              Welcome back,
+              <br />
+              {account.name}
+            </h2>
+
+            <div className="account-info">
+              <strong>
+                Account email
+              </strong>
+
+              <span>
+                {account.email}
+              </span>
+            </div>
+
+            <p className="account-note">
+              Your Marlow account is available
+              whenever you return to this
+              browser.
+            </p>
+
+            <button
+              className="modal-add-button"
+              onClick={() => {
+                onSignOut();
+                onClose();
+              }}
+            >
+              Sign Out
+            </button>
+          </>
+        ) : (
+          <>
+            <span className="eyebrow">
+              Marlow Account
+            </span>
+
+            <h2>
+              {mode === "create"
+                ? "Create your account"
+                : "Sign in to Marlow"}
+            </h2>
+
+            <p className="account-note">
+              Create an account so you can
+              return to Marlow and access
+              your account anytime.
+            </p>
+
+            <form
+              className="account-form"
+              onSubmit={handleSubmit}
+            >
+              {mode === "create" && (
+                <input
+                  value={name}
+                  onChange={(event) =>
+                    setName(
+                      event.target.value
+                    )
+                  }
+                  placeholder="Full name"
+                  autoComplete="name"
+                />
+              )}
+
+              <input
+                type="email"
+                value={email}
+                onChange={(event) =>
+                  setEmail(
+                    event.target.value
+                  )
+                }
+                placeholder="Email address"
+                autoComplete="email"
+              />
+
+              <input
+                type="password"
+                value={password}
+                onChange={(event) =>
+                  setPassword(
+                    event.target.value
+                  )
+                }
+                placeholder="Password"
+                autoComplete={
+                  mode === "create"
+                    ? "new-password"
+                    : "current-password"
+                }
+              />
+
+              {accountError && (
+                <div className="account-error">
+                  {accountError}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                className="modal-add-button"
+              >
+                {mode === "create"
+                  ? "Create Account"
+                  : "Sign In"}
+              </button>
+            </form>
+
+            <button
+              className="account-switch"
+              onClick={() => {
+                setAccountError("");
+                setMode(
+                  mode === "create"
+                    ? "signin"
+                    : "create"
+                );
+              }}
+            >
+              {mode === "create"
+                ? "Already have an account? Sign in"
+                : "Need an account? Create one"}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================
+   CART DRAWER
+========================================================= */
+
+function CartDrawer({
+  cart,
+  onClose,
+  onRemove,
+  onCheckout,
+}) {
+  const subtotal =
+    cart.reduce(
+      (total, item) =>
+        total +
+        item.price *
+          item.quantity,
+      0
+    );
+
+  return (
+    <div
+      className="cart-backdrop"
+      onClick={onClose}
+    >
+      <aside
+        className="cart-drawer"
+        onClick={(event) =>
+          event.stopPropagation()
+        }
+      >
+        <div className="cart-header">
+          <h2>Your Cart</h2>
+
+          <button
+            className="close-button"
+            onClick={onClose}
+          >
+            ×
+          </button>
+        </div>
+
+        {!cart.length ? (
+          <div className="empty-cart">
+            <div className="empty-cart-icon">
+              🛒
+            </div>
+
+            <h3>
+              Your cart is empty
+            </h3>
+
+            <p>
+              Add something you love
+              from Marlow.
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="cart-items">
+              {cart.map((item) => (
+                <div
+                  className="cart-item"
+                  key={item.id}
+                >
+                  <img
+                    src={item.image}
+                    alt={item.name}
+                  />
+
+                  <div className="cart-item-info">
+                    <strong>
+                      {item.name}
+                    </strong>
+
+                    <span>
+                      $
+                      {Number(
+                        item.price
+                      ).toFixed(2)}
+                    </span>
+
+                    <span>
+                      Quantity:{" "}
+                      {item.quantity}
+                    </span>
+
+                    <button
+                      className="remove-button"
+                      onClick={() =>
+                        onRemove(
+                          item.id
+                        )
+                      }
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="cart-summary">
+              <div className="subtotal-row">
+                <span>
+                  Subtotal
+                </span>
+
+                <strong>
+                  $
+                  {subtotal.toFixed(
+                    2
+                  )}
+                </strong>
+              </div>
+
+              <p className="checkout-note">
+                Tax and shipping will
+                be calculated during
+                secure checkout.
+              </p>
+
+              <button
+                className="checkout-button"
+                onClick={
+                  onCheckout
+                }
+              >
+                Continue to Checkout
+              </button>
+            </div>
+          </>
+        )}
+      </aside>
+    </div>
+  );
+}
+
+/* =========================================================
+   HOME
+========================================================= */
 
 export default function Home() {
   const [search, setSearch] =
     useState("");
 
+  const [
+    submittedSearch,
+    setSubmittedSearch,
+  ] = useState("");
+
   const [category, setCategory] =
     useState("All");
 
-  const [product, setProduct] =
-    useState(null);
-
-  const [cartOpen, setCartOpen] =
-    useState(false);
-
-  const [cart, setCart] =
+  const [homeProducts, setHomeProducts] =
     useState([]);
 
   const [
-    supplierProducts,
-    setSupplierProducts,
+    categoryProducts,
+    setCategoryProducts,
   ] = useState([]);
 
-  const [
-    homeProducts,
-    setHomeProducts,
-  ] = useState([]);
-
-  const [
-    searchingSupplier,
-    setSearchingSupplier,
-  ] = useState(false);
-
-  const [
-    loadingHomeProducts,
-    setLoadingHomeProducts,
-  ] = useState(false);
-
-  const [
-    supplierError,
-    setSupplierError,
-  ] = useState("");
-
-  const [
-    homeError,
-    setHomeError,
-  ] = useState("");
-
-  const [
-    hasSearched,
-    setHasSearched,
-  ] = useState(false);
-
-  const [
-    searchQuery,
-    setSearchQuery,
-  ] = useState("");
+  const [loadingHome, setLoadingHome] =
+    useState(true);
 
   const [
     loadingCategory,
@@ -970,793 +1187,495 @@ export default function Home() {
   ] = useState(false);
 
   const [
-    categoryProducts,
-    setCategoryProducts,
+    searchProducts,
+    setSearchProducts,
   ] = useState([]);
 
-  const [
-    searchPage,
-    setSearchPage,
-  ] = useState(1);
+  const [searching, setSearching] =
+    useState(false);
 
   const [
-    canLoadMore,
-    setCanLoadMore,
-  ] = useState(false);
+    selectedProduct,
+    setSelectedProduct,
+  ] = useState(null);
 
-  const [
-    loadingMore,
-    setLoadingMore,
-  ] = useState(false);
+  const [cart, setCart] =
+    useState([]);
 
-  const categoryRequest =
-    useRef(0);
+  const [cartOpen, setCartOpen] =
+    useState(false);
 
-  const searchRequest =
-    useRef(0);
+  const [error, setError] =
+    useState("");
 
-  const cartCount =
-    cart.reduce(
-      (sum, item) =>
-        sum + item.quantity,
-      0
-    );
+  const [account, setAccount] =
+    useState(null);
 
-  const cartTotal =
-    cart.reduce(
-      (sum, item) =>
-        sum +
-        item.price *
-          item.quantity,
-      0
-    );
+  const [accountOpen, setAccountOpen] =
+    useState(false);
 
-  async function searchSupplierCatalog(
-    query,
-    page = 1,
-    append = false
-  ) {
-    const cleanQuery =
-      String(query || "").trim();
+  /* =======================================================
+     LOAD SAVED CART + ACCOUNT
+  ======================================================= */
 
-    if (!cleanQuery) {
-      return;
-    }
-
-    const requestId =
-      ++searchRequest.current;
-
-    const apiQuery =
-      normalizeSearchQuery(
-        cleanQuery
-      );
-
-    if (append) {
-      setLoadingMore(true);
-    } else {
-      setSearchingSupplier(
-        true
-      );
-      setSupplierError("");
-      setHasSearched(false);
-    }
-
+  useEffect(() => {
     try {
-      const response =
-        await fetch(
-          `/api/search?q=${encodeURIComponent(
-            apiQuery
-          )}&page=${page}&size=100`,
-          {
-            cache:
-              "no-store",
-          }
+      const savedCart =
+        localStorage.getItem(
+          "marlow-cart"
         );
 
-      const data =
-        await response.json();
+      if (savedCart) {
+        const parsed =
+          JSON.parse(savedCart);
 
-      if (
-        requestId !==
-        searchRequest.current
-      ) {
+        if (Array.isArray(parsed)) {
+          setCart(parsed);
+        }
+      }
+
+      const savedAccount =
+        localStorage.getItem(
+          "marlow-account"
+        );
+
+      if (savedAccount) {
+        const parsed =
+          JSON.parse(savedAccount);
+
+        if (
+          parsed &&
+          parsed.email &&
+          parsed.name
+        ) {
+          setAccount(parsed);
+        }
+      }
+    } catch (storageError) {
+      console.error(
+        "Marlow local storage error:",
+        storageError
+      );
+    }
+  }, []);
+
+  /* =======================================================
+     SAVE CART
+  ======================================================= */
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        "marlow-cart",
+        JSON.stringify(cart)
+      );
+    } catch (storageError) {
+      console.error(
+        "Could not save Marlow cart:",
+        storageError
+      );
+    }
+  }, [cart]);
+
+  /* =======================================================
+     HOME PAGE — GET 375 UNIQUE PRODUCTS
+  ======================================================= */
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadHomeProducts() {
+      setLoadingHome(true);
+      setError("");
+
+      const queries = [
+        "electronics",
+        "phone accessories",
+        "home kitchen",
+        "home decor",
+        "clothing",
+        "shoes",
+        "beauty skincare",
+        "fitness sports",
+        "toys kids",
+        "travel luggage",
+        "tools",
+      ];
+
+      let collected = [];
+
+      try {
+        /*
+         * Continue through the catalog searches until
+         * we have at least 375 UNIQUE usable candidates.
+         *
+         * Search itself is never limited to 375.
+         */
+        for (const query of queries) {
+          if (cancelled) {
+            return;
+          }
+
+          const results =
+            await fetchAllCJPages(
+              query
+            );
+
+          collected =
+            uniqueProducts([
+              ...collected,
+              ...results,
+            ]);
+
+          /*
+           * Once we have more than 375 candidates,
+           * we can stop searching additional broad
+           * home queries.
+           *
+           * This does NOT limit the search feature.
+           */
+          if (
+            collected.length >=
+            HOME_PRODUCT_LIMIT
+          ) {
+            break;
+          }
+        }
+
+        const converted =
+          collected
+            .map(
+              (product, index) =>
+                convertSupplierProduct(
+                  product,
+                  index
+                )
+            )
+            .filter(Boolean);
+
+        const unique =
+          uniqueProducts(
+            converted
+          );
+
+        const finalProducts =
+          sortProducts(
+            unique
+          ).slice(
+            0,
+            HOME_PRODUCT_LIMIT
+          );
+
+        if (!cancelled) {
+          setHomeProducts(
+            finalProducts
+          );
+
+          if (
+            finalProducts.length <
+            HOME_PRODUCT_LIMIT
+          ) {
+            setError(
+              `Marlow loaded ${finalProducts.length} live products because the available CJ catalog returned fewer usable unique products for the home collection.`
+            );
+          }
+        }
+      } catch (err) {
+        console.error(
+          "Home catalog error:",
+          err
+        );
+
+        if (!cancelled) {
+          setError(
+            "We couldn't load the live product catalog right now."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingHome(false);
+        }
+      }
+    }
+
+    loadHomeProducts();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  /* =======================================================
+     CATEGORY PAGE — ALL AVAILABLE MATCHING PRODUCTS
+  ======================================================= */
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadCategory() {
+      if (category === "All") {
+        setCategoryProducts([]);
         return;
       }
 
-      if (!response.ok) {
-        throw new Error(
-          data?.message ||
-            "Search failed."
-        );
-      }
+      setLoadingCategory(true);
+      setError("");
 
-      const intent =
-        getSearchIntent(
+      try {
+        const products =
+          await fetchCategoryProducts(
+            category
+          );
+
+        if (!cancelled) {
+          setCategoryProducts(
+            uniqueProducts(products)
+          );
+        }
+      } catch (err) {
+        console.error(
+          "Category loading error:",
+          err
+        );
+
+        if (!cancelled) {
+          setCategoryProducts([]);
+          setError(
+            "We couldn't load this category right now."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingCategory(false);
+        }
+      }
+    }
+
+    loadCategory();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [category]);
+
+  /* =======================================================
+     SEARCH — ALL MATCHING CJ RESULTS
+  ======================================================= */
+
+  async function performSearch(query) {
+    const cleanQuery =
+      query.trim();
+
+    if (!cleanQuery) {
+      setSubmittedSearch("");
+      setSearchProducts([]);
+      setError("");
+      return;
+    }
+
+    setSearching(true);
+    setSubmittedSearch(
+      cleanQuery
+    );
+    setCategory("All");
+    setError("");
+
+    try {
+      /*
+       * fetchAllCJPages continues until CJ says
+       * there are no more pages.
+       *
+       * There is NO 100-result, 375-result,
+       * or 5,000-result search cap.
+       */
+      const results =
+        await fetchAllCJPages(
           cleanQuery
         );
 
-      let finalProducts =
-        (data?.products || [])
+      const converted =
+        results
           .map(
-            (item, index) =>
+            (product, index) =>
               convertSupplierProduct(
-                item,
+                product,
                 index
               )
           )
-          .filter(
-            (item) =>
-              item.name &&
-              item.price > 0 &&
-              item.id
-          );
+          .filter(Boolean);
 
-      finalProducts =
-        finalProducts.filter(
-          (item) =>
-            matchesSpecialSearch(
-              item,
-              cleanQuery
-            )
-        );
-
-      finalProducts =
-        sortProducts(
-          finalProducts,
-          intent
-        );
-
-      if (append) {
-        setSupplierProducts(
-          (current) => {
-            const map =
-              new Map(
-                current.map(
-                  (item) => [
-                    item.id,
-                    item,
-                  ]
-                )
-              );
-
-            finalProducts.forEach(
-              (item) => {
-                if (
-                  !map.has(
-                    item.id
-                  )
-                ) {
-                  map.set(
-                    item.id,
-                    item
-                  );
-                }
-              }
-            );
-
-            return sortProducts(
-              Array.from(
-                map.values()
-              ),
-              intent
-            );
-          }
-        );
-      } else {
-        setSupplierProducts(
-          finalProducts
-        );
-      }
-
-      setSearchPage(
-        page
-      );
-
-      setCanLoadMore(
-        Boolean(
-          data?.hasMore ??
-            Number(
-              data?.totalRecords ||
-                0
-            ) >
-              page * 100
-        )
-      );
-
-      setHasSearched(
-        true
-      );
-    } catch (error) {
-      console.error(error);
-
-      if (
-        requestId !==
-        searchRequest.current
-      ) {
-        return;
-      }
-
-      if (!append) {
-        setSupplierProducts(
-          []
-        );
-      }
-
-      setSupplierError(
-        "We couldn't load those products right now. Please try again."
-      );
-
-      setHasSearched(
-        true
-      );
-    } finally {
-      if (
-        requestId ===
-        searchRequest.current
-      ) {
-        setSearchingSupplier(
-          false
-        );
-        setLoadingMore(
-          false
-        );
-      }
-    }
-  }
-
-  async function loadHomeProducts() {
-    setLoadingHomeProducts(
-      true
-    );
-
-    setHomeError("");
-
-    /*
-      Multiple targeted searches give
-      Marlow a much wider and more
-      varied collection than searching
-      one generic keyword.
-    */
-
-    const homeSearches = [
-      "electronics",
-      "phone accessories",
-      "home kitchen",
-      "home decor",
-      "clothing",
-      "shoes",
-      "beauty skincare",
-      "fitness sports",
-      "toys kids",
-      "travel luggage",
-      "tools",
-    ];
-
-    try {
-      const results =
-        await Promise.all(
-          homeSearches.map(
-            async (query) => {
-              try {
-                const response =
-                  await fetch(
-                    `/api/search?q=${encodeURIComponent(
-                      query
-                    )}&page=1&size=100`,
-                    {
-                      cache:
-                        "no-store",
-                    }
-                  );
-
-                if (
-                  !response.ok
-                ) {
-                  return [];
-                }
-
-                const data =
-                  await response.json();
-
-                return (
-                  data?.products ||
-                  []
-                )
-                  .map(
-                    (
-                      item,
-                      index
-                    ) =>
-                      convertSupplierProduct(
-                        item,
-                        index
-                      )
-                  )
-                  .filter(
-                    (item) =>
-                      item?.id &&
-                      item?.name &&
-                      item?.price >
-                        0
-                  );
-              } catch {
-                return [];
-              }
-            }
-          )
-        );
-
-      const map =
-        new Map();
-
-      results
-        .flat()
-        .forEach(
-          (item) => {
-            if (
-              item?.id &&
-              item?.name &&
-              item?.price >
-                0 &&
-              !map.has(
-                item.id
-              )
-            ) {
-              map.set(
-                item.id,
-                item
-              );
-            }
-          }
-        );
-
-      const liveProducts =
-        Array.from(
-          map.values()
+      const unique =
+        uniqueProducts(
+          converted
         );
 
       /*
-        Spread products across
-        categories so the home page
-        doesn't become dominated by
-        one type of product.
-      */
-
-      const diverseProducts =
-        diversifyProducts(
-          liveProducts,
-          HOME_PRODUCT_LIMIT
-        );
-
-      const combined = [
-        ...diverseProducts,
-      ];
-
-      /*
-        Demo products are only used
-        as a small fallback. They do
-        not replace live catalog items.
-      */
-
-      for (
-        const demo of demoProducts
-      ) {
-        if (
-          combined.length >=
-          HOME_PRODUCT_LIMIT
-        ) {
-          break;
-        }
-
-        if (
-          !combined.some(
-            (item) =>
-              item.id ===
-              demo.id
-          )
-        ) {
-          combined.push(
-            demo
-          );
-        }
-      }
-
-      setHomeProducts(
-        combined.slice(
-          0,
-          HOME_PRODUCT_LIMIT
-        )
+       * Do not slice this array.
+       *
+       * Search results remain ALL unique
+       * matching results returned by CJ.
+       */
+      setSearchProducts(
+        sortProducts(unique)
+      );
+    } catch (err) {
+      console.error(
+        "Search error:",
+        err
       );
 
-      if (
-        liveProducts.length === 0
-      ) {
-        setHomeError(
-          "Live products are temporarily unavailable. Showing Marlow's featured collection."
-        );
-      }
-    } catch (error) {
-      console.error(error);
+      setSearchProducts([]);
 
-      setHomeProducts(
-        demoProducts
-      );
-
-      setHomeError(
-        "Live products are temporarily unavailable. Showing Marlow's featured collection."
+      setError(
+        "We couldn't complete that search right now."
       );
     } finally {
-      setLoadingHomeProducts(
-        false
-      );
+      setSearching(false);
     }
   }
 
-  async function loadCategoryProducts(
-    selectedCategory
-  ) {
-    if (
-      selectedCategory ===
-      "All"
-    ) {
-      setCategoryProducts(
-        []
+  /* =======================================================
+     ACCOUNT
+  ======================================================= */
+
+  function handleAccountSubmit(data) {
+    const email =
+      String(
+        data?.email || ""
+      )
+        .trim()
+        .toLowerCase();
+
+    const password =
+      String(
+        data?.password || ""
       );
+
+    if (
+      !email ||
+      !password
+    ) {
       return;
     }
-
-    const requestId =
-      ++categoryRequest.current;
 
     /*
-      First use products already
-      loaded on the home page.
-      This avoids unnecessary
-      catalog requests.
-    */
-
-    const existingHomeProducts =
-      homeProducts.filter(
-        (item) =>
-          item.category ===
-          selectedCategory
-      );
-
-    if (
-      existingHomeProducts.length >=
-      24
-    ) {
-      setCategoryProducts(
-        existingHomeProducts
-      );
-
-      return;
-    }
-
-    const searches =
-      categorySearches[
-        selectedCategory
-      ] || [
-        selectedCategory,
-      ];
-
-    setLoadingCategory(
-      true
-    );
-
-    setSupplierError("");
-
-    try {
-      const results =
-        await Promise.all(
-          searches.map(
-            async (query) => {
-              try {
-                const response =
-                  await fetch(
-                    `/api/search?q=${encodeURIComponent(
-                      query
-                    )}&page=1&size=100`,
-                    {
-                      cache:
-                        "no-store",
-                    }
-                  );
-
-                if (
-                  !response.ok
-                ) {
-                  return [];
-                }
-
-                const data =
-                  await response.json();
-
-                return (
-                  data?.products ||
-                  []
-                ).map(
-                  (
-                    item,
-                    index
-                  ) =>
-                    convertSupplierProduct(
-                      item,
-                      index
-                    )
-                );
-              } catch {
-                return [];
-              }
-            }
-          )
-        );
-
-      if (
-        requestId !==
-        categoryRequest.current
-      ) {
-        return;
-      }
-
-      const map =
-        new Map();
-
-      results
-        .flat()
-        .forEach(
-          (item) => {
-            if (
-              item?.id &&
-              item?.name &&
-              item?.price > 0 &&
-              item.category ===
-                selectedCategory &&
-              !map.has(
-                item.id
-              )
-            ) {
-              map.set(
-                item.id,
-                item
-              );
-            }
-          }
-        );
-
-      let products =
-        Array.from(
-          map.values()
-        );
-
-      if (
-        products.length === 0
-      ) {
-        products =
-          demoProducts.filter(
-            (item) =>
-              item.category ===
-              selectedCategory
-          );
-      }
-
-      setCategoryProducts(
-        products.slice(
-          0,
-          HOME_PRODUCT_LIMIT
-        )
-      );
-    } catch (error) {
-      console.error(error);
-
-      if (
-        requestId !==
-        categoryRequest.current
-      ) {
-        return;
-      }
-
-      setCategoryProducts(
-        demoProducts.filter(
-          (item) =>
-            item.category ===
-            selectedCategory
-        )
-      );
-    } finally {
-      if (
-        requestId ===
-        categoryRequest.current
-      ) {
-        setLoadingCategory(
-          false
-        );
-      }
-    }
-  }
-
-  useEffect(() => {
-    loadHomeProducts();
-  }, []);
-
-  useEffect(() => {
-    if (
-      category !==
-      "All"
-    ) {
-      loadCategoryProducts(
-        category
-      );
-    } else {
-      setCategoryProducts(
-        []
-      );
-    }
-  }, [category]);
-
-  function handleSearchSubmit(
-    event
-  ) {
-    event?.preventDefault();
-
-    const cleanQuery =
-      search.trim();
-
-    if (!cleanQuery) {
-      return;
-    }
-
-    setCategory(
-      "All"
-    );
-
-    setSearchQuery(
-      cleanQuery
-    );
-
-    setSearchPage(
-      1
-    );
-
-    setCanLoadMore(
-      false
-    );
-
-    searchSupplierCatalog(
-      cleanQuery,
-      1,
-      false
-    );
-  }
-
-  function handleSearchChange(
-    event
-  ) {
-    setSearch(
-      event.target.value
-    );
-  }
-
-  function handleCategoryClick(
-    selectedCategory
-  ) {
-    setCategory(
-      selectedCategory
-    );
-
-    setSearch("");
-
-    if (
-      selectedCategory ===
-      "All"
-    ) {
-      setSearchQuery(
-        ""
-      );
-
-      setHasSearched(
-        false
-      );
-
-      setSupplierProducts(
-        []
-      );
-    } else {
-      setHasSearched(
-        false
-      );
-
-      setSearchQuery(
-        ""
-      );
-
-      setSupplierProducts(
-        []
-      );
-    }
-
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
-  }
-
-  function loadMoreSearchResults() {
-    if (
-      !searchQuery ||
-      loadingMore ||
-      !canLoadMore
-    ) {
-      return;
-    }
-
-    searchSupplierCatalog(
-      searchQuery,
-      searchPage + 1,
-      true
-    );
-  }
-
-  function openProduct(
-    item
-  ) {
-    setProduct(item);
-  }
-
-  function addToCart(
-    item
-  ) {
-    setCart(
-      (current) => {
-        const existing =
-          current.find(
-            (cartItem) =>
-              cartItem.id ===
-              item.id
+     * SIGN IN
+     */
+    if (data.signingIn) {
+      try {
+        const stored =
+          localStorage.getItem(
+            "marlow-account"
           );
 
-        if (existing) {
-          return current.map(
-            (cartItem) =>
-              cartItem.id ===
-              item.id
-                ? {
-                    ...cartItem,
-                    quantity:
-                      cartItem.quantity +
-                      1,
-                  }
-                : cartItem
+        if (!stored) {
+          alert(
+            "No Marlow account was found on this browser. Please create an account first."
           );
+          return;
         }
 
-        return [
-          ...current,
-          {
-            ...item,
-            quantity: 1,
-          },
-        ];
+        const saved =
+          JSON.parse(stored);
+
+        if (
+          saved.email !== email ||
+          saved.password !== password
+        ) {
+          alert(
+            "The email or password is incorrect."
+          );
+          return;
+        }
+
+        setAccount(saved);
+        return;
+      } catch (error) {
+        console.error(
+          "Account sign-in error:",
+          error
+        );
+
+        alert(
+          "We couldn't sign you in right now."
+        );
+
+        return;
       }
-    );
+    }
 
-    setProduct(
-      null
-    );
+    /*
+     * CREATE ACCOUNT
+     */
+    const name =
+      String(
+        data?.name || ""
+      ).trim();
 
-    setCartOpen(
-      true
-    );
+    if (!name) {
+      alert(
+        "Please enter your name."
+      );
+      return;
+    }
+
+    const newAccount = {
+      name,
+      email,
+      password,
+      createdAt:
+        new Date().toISOString(),
+    };
+
+    try {
+      localStorage.setItem(
+        "marlow-account",
+        JSON.stringify(
+          newAccount
+        )
+      );
+
+      setAccount(
+        newAccount
+      );
+
+      alert(
+        "Your Marlow account has been created."
+      );
+    } catch (error) {
+      console.error(
+        "Account creation error:",
+        error
+      );
+
+      alert(
+        "We couldn't create your account right now."
+      );
+    }
   }
 
-  function increaseQuantity(
-    id
-  ) {
-    setCart(
-      (current) =>
-        current.map(
+  function signOutAccount() {
+    setAccount(null);
+  }
+
+  /* =======================================================
+     CART
+  ======================================================= */
+
+  function addToCart(product) {
+    setCart((current) => {
+      const existing =
+        current.find(
           (item) =>
-            item.id === id
+            item.id ===
+            product.id
+        );
+
+      if (existing) {
+        return current.map(
+          (item) =>
+            item.id ===
+            product.id
               ? {
                   ...item,
                   quantity:
@@ -1764,173 +1683,484 @@ export default function Home() {
                     1,
                 }
               : item
-        )
-    );
-  }
+        );
+      }
 
-  function decreaseQuantity(
-    id
-  ) {
-    setCart(
-      (current) =>
-        current
-          .map(
-            (item) =>
-              item.id === id
-                ? {
-                    ...item,
-                    quantity:
-                      item.quantity -
-                      1,
-                  }
-                : item
-          )
-          .filter(
-            (item) =>
-              item.quantity >
-              0
-          )
-    );
-  }
-
-  function removeFromCart(
-    id
-  ) {
-    setCart(
-      (current) =>
-        current.filter(
-          (item) =>
-            item.id !== id
-        )
-    );
-  }
-
-  function showHome() {
-    setCategory(
-      "All"
-    );
-
-    setSearch("");
-
-    setSearchQuery(
-      ""
-    );
-
-    setSupplierProducts(
-      []
-    );
-
-    setHasSearched(
-      false
-    );
-
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
+      return [
+        ...current,
+        {
+          ...product,
+          quantity: 1,
+        },
+      ];
     });
+
+    setCartOpen(true);
   }
 
-  const visibleProducts =
+  function removeFromCart(id) {
+    setCart((current) =>
+      current.filter(
+        (item) =>
+          item.id !== id
+      )
+    );
+  }
+
+  function handleCheckout() {
+    if (!account) {
+      setCartOpen(false);
+      setAccountOpen(true);
+
+      alert(
+        "Please create a Marlow account or sign in before continuing to checkout."
+      );
+
+      return;
+    }
+
+    alert(
+      "Secure checkout is not connected yet. Customer accounts, tax, shipping, payment processing, and CJ order fulfillment still need to be connected before real orders can be accepted."
+    );
+  }
+
+  /* =======================================================
+     DISPLAYED PRODUCTS
+  ======================================================= */
+
+  const displayedProducts =
     useMemo(() => {
-      if (
-        category !==
-        "All"
-      ) {
+      if (submittedSearch) {
+        /*
+         * ALL search results.
+         */
+        return searchProducts;
+      }
+
+      if (category !== "All") {
+        /*
+         * ALL products loaded for this category.
+         */
         return categoryProducts;
       }
 
-      if (hasSearched) {
-        return supplierProducts;
-      }
-
-      return homeProducts;
+      /*
+       * Home page only:
+       * exactly up to 375 unique products.
+       */
+      return homeProducts.slice(
+        0,
+        HOME_PRODUCT_LIMIT
+      );
     }, [
+      submittedSearch,
+      searchProducts,
       category,
       categoryProducts,
-      hasSearched,
-      supplierProducts,
       homeProducts,
     ]);
 
-  const featuredProducts =
-    homeProducts.slice(
-      0,
-      8
+  const cartCount =
+    cart.reduce(
+      (total, item) =>
+        total +
+        item.quantity,
+      0
     );
 
-  const trendingProducts =
-    homeProducts.slice(
-      8,
-      16
-    );
-
-  const electronicsProducts =
-    homeProducts
-      .filter(
-        (item) =>
-          item.category ===
-          "Electronics"
-      )
-      .slice(
-        0,
-        8
-      );
-
-  const homeKitchenProducts =
-    homeProducts
-      .filter(
-        (item) =>
-          item.category ===
-          "Home"
-      )
-      .slice(
-        0,
-        8
-      );
-
-  const dealProducts =
-    [...homeProducts]
-      .sort(
-        (a, b) => {
-          const discountDifference =
-            Number(
-              b?.discountPercent ||
-                0
-            ) -
-            Number(
-              a?.discountPercent ||
-                0
-            );
-
-          if (
-            discountDifference !==
-            0
-          ) {
-            return discountDifference;
-          }
-
-          return (
-            a.price -
-            b.price
-          );
-        }
-      )
-      .slice(
-        0,
-        8
-      );
-
-  const showSearchResults =
-    hasSearched &&
-    category ===
-      "All";
-
-  const showCategoryResults =
-    category !==
-    "All";
+  /* =======================================================
+     RENDER
+  ======================================================= */
 
   return (
-    <main>
+    <main className="site">
+      <header className="header">
+        <div className="header-inner">
+          <button
+            className="logo"
+            onClick={() => {
+              setCategory("All");
+              setSubmittedSearch("");
+              setSearch("");
+              setError("");
+            }}
+          >
+            Marlow
+          </button>
+
+          <form
+            className="search-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+
+              performSearch(
+                search
+              );
+            }}
+          >
+            <input
+              value={search}
+              onChange={(event) =>
+                setSearch(
+                  event.target.value
+                )
+              }
+              placeholder="Search products..."
+              aria-label="Search products"
+            />
+
+            <button type="submit">
+              Search
+            </button>
+          </form>
+
+          <div className="header-actions">
+            <button
+              onClick={() =>
+                setAccountOpen(true)
+              }
+            >
+              {account
+                ? "My Account"
+                : "Account"}
+            </button>
+
+            <button
+              onClick={() => {
+                if (!account) {
+                  setAccountOpen(
+                    true
+                  );
+
+                  return;
+                }
+
+                alert(
+                  "Your order history will appear here once secure checkout and order processing are connected."
+                );
+              }}
+            >
+              Orders
+            </button>
+
+            <button
+              className="cart-button"
+              onClick={() =>
+                setCartOpen(true)
+              }
+            >
+              Cart
+
+              {cartCount > 0 && (
+                <span className="cart-count">
+                  {cartCount}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <nav className="category-bar">
+        <div className="category-inner">
+          {CATEGORIES.map(
+            (item) => (
+              <button
+                key={item}
+                className={
+                  category ===
+                    item &&
+                  !submittedSearch
+                    ? "category-button active"
+                    : "category-button"
+                }
+                onClick={() => {
+                  setCategory(
+                    item
+                  );
+
+                  setSubmittedSearch(
+                    ""
+                  );
+
+                  setSearch("");
+
+                  setSearchProducts(
+                    []
+                  );
+
+                  setError("");
+                }}
+              >
+                {item}
+              </button>
+            )
+          )}
+        </div>
+      </nav>
+
+      {!submittedSearch &&
+        category === "All" && (
+          <section className="hero">
+            <div className="hero-content">
+              <span className="hero-eyebrow">
+                Welcome to Marlow
+              </span>
+
+              <h1>
+                Discover products
+                you'll love.
+              </h1>
+
+              <p>
+                Shop a growing
+                collection of
+                products across
+                electronics, home,
+                clothing, beauty,
+                sports, travel and
+                more.
+              </p>
+
+              <button
+                className="hero-button"
+                onClick={() => {
+                  document
+                    .getElementById(
+                      "products"
+                    )
+                    ?.scrollIntoView(
+                      {
+                        behavior:
+                          "smooth",
+                      }
+                    );
+                }}
+              >
+                Shop Marlow
+              </button>
+            </div>
+          </section>
+        )}
+
+      <section
+        className="products-section"
+        id="products"
+      >
+        <div className="section-heading">
+          <div>
+            {submittedSearch ? (
+              <>
+                <span className="eyebrow">
+                  Search Results
+                </span>
+
+                <h2>
+                  Results for "
+                  {
+                    submittedSearch
+                  }
+                  "
+                </h2>
+              </>
+            ) : category !==
+              "All" ? (
+              <>
+                <span className="eyebrow">
+                  Marlow Category
+                </span>
+
+                <h2>
+                  {category}
+                </h2>
+              </>
+            ) : (
+              <>
+                <span className="eyebrow">
+                  Marlow Collection
+                </span>
+
+                <h2>
+                  All{" "}
+                  {
+                    HOME_PRODUCT_LIMIT
+                  }{" "}
+                  Products
+                </h2>
+              </>
+            )}
+          </div>
+
+          {!submittedSearch &&
+            category ===
+              "All" &&
+            !loadingHome && (
+              <div className="product-count">
+                {
+                  displayedProducts.length
+                }{" "}
+                products
+              </div>
+            )}
+
+          {submittedSearch &&
+            !searching && (
+              <div className="product-count">
+                {
+                  displayedProducts.length
+                }{" "}
+                results
+              </div>
+            )}
+
+          {!submittedSearch &&
+            category !==
+              "All" &&
+            !loadingCategory && (
+              <div className="product-count">
+                {
+                  displayedProducts.length
+                }{" "}
+                products
+              </div>
+            )}
+        </div>
+
+        {error && (
+          <div className="notice">
+            {error}
+          </div>
+        )}
+
+        {loadingHome ||
+        loadingCategory ||
+        searching ? (
+          <div className="loading">
+            <div className="spinner" />
+
+            <p>
+              {searching
+                ? "Searching the Marlow catalog..."
+                : "Loading products..."}
+            </p>
+          </div>
+        ) : (
+          <ProductGrid
+            products={
+              displayedProducts
+            }
+            onOpen={
+              setSelectedProduct
+            }
+            onAdd={
+              addToCart
+            }
+          />
+        )}
+      </section>
+
+      <footer className="footer">
+        <div className="footer-inner">
+          <div>
+            <div className="footer-logo">
+              Marlow
+            </div>
+
+            <p>
+              A better way to
+              discover products
+              online.
+            </p>
+          </div>
+
+          <div>
+            <h4>Shop</h4>
+
+            {CATEGORIES.slice(
+              1
+            ).map((item) => (
+              <button
+                key={item}
+                onClick={() => {
+                  setCategory(
+                    item
+                  );
+
+                  setSubmittedSearch(
+                    ""
+                  );
+
+                  setSearch("");
+
+                  window.scrollTo(
+                    {
+                      top: 0,
+                      behavior:
+                        "smooth",
+                    }
+                  );
+                }}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="footer-bottom">
+          ©{" "}
+          {new Date().getFullYear()}{" "}
+          Marlow. All rights
+          reserved.
+        </div>
+      </footer>
+
+      <ProductModal
+        product={
+          selectedProduct
+        }
+        onClose={() =>
+          setSelectedProduct(
+            null
+          )
+        }
+        onAdd={
+          addToCart
+        }
+      />
+
+      {cartOpen && (
+        <CartDrawer
+          cart={cart}
+          onClose={() =>
+            setCartOpen(false)
+          }
+          onRemove={
+            removeFromCart
+          }
+          onCheckout={
+            handleCheckout
+          }
+        />
+      )}
+
+      {accountOpen && (
+        <AccountModal
+          account={account}
+          onClose={() =>
+            setAccountOpen(
+              false
+            )
+          }
+          onCreateAccount={
+            handleAccountSubmit
+          }
+          onSignOut={
+            signOutAccount
+          }
+        />
+      )}
+
       <style jsx global>{`
         * {
           box-sizing: border-box;
@@ -1942,15 +2172,11 @@ export default function Home() {
 
         body {
           margin: 0;
-          background: #f7f5f0;
-          color: #171717;
+          background: #f7f7f5;
+          color: #181818;
           font-family:
-            Inter,
-            ui-sans-serif,
-            system-ui,
-            -apple-system,
-            BlinkMacSystemFont,
-            "Segoe UI",
+            Arial,
+            Helvetica,
             sans-serif;
         }
 
@@ -1963,76 +2189,72 @@ export default function Home() {
           cursor: pointer;
         }
 
-        .marlow-page {
+        .site {
           min-height: 100vh;
-        }
-
-        .topbar {
-          background: #171717;
-          color: white;
-          padding: 10px 20px;
-          text-align: center;
-          font-size: 13px;
-          letter-spacing: 0.04em;
         }
 
         .header {
           position: sticky;
           top: 0;
-          z-index: 30;
-          background: rgba(247, 245, 240, 0.96);
-          backdrop-filter: blur(12px);
-          border-bottom: 1px solid #e5e0d6;
+          z-index: 50;
+          background: rgba(
+            255,
+            255,
+            255,
+            0.96
+          );
+          border-bottom: 1px solid
+            #e5e5e5;
+          backdrop-filter: blur(
+            12px
+          );
         }
 
         .header-inner {
-          max-width: 1400px;
-          margin: auto;
-          min-height: 78px;
-          padding: 0 24px;
+          max-width: 1500px;
+          margin: 0 auto;
+          min-height: 76px;
+          padding: 12px 24px;
           display: flex;
           align-items: center;
-          gap: 24px;
+          gap: 22px;
         }
 
         .logo {
           border: 0;
           background: transparent;
-          font-size: 28px;
-          font-weight: 900;
-          letter-spacing: -0.07em;
-          color: #171717;
+          font-size: 30px;
+          font-weight: 800;
+          letter-spacing: -1.5px;
+          color: #111;
         }
 
         .search-form {
           flex: 1;
+          max-width: 700px;
           display: flex;
-          max-width: 720px;
-          margin: 0 auto;
+          background: #f2f2f2;
+          border-radius: 999px;
+          overflow: hidden;
+          border: 1px solid
+            #dedede;
         }
 
-        .search-input {
-          width: 100%;
-          height: 46px;
-          border: 1px solid #d9d3c8;
-          background: white;
-          border-radius: 14px 0 0 14px;
-          padding: 0 16px;
-          outline: none;
-        }
-
-        .search-input:focus {
-          border-color: #171717;
-        }
-
-        .search-button {
-          height: 46px;
-          padding: 0 20px;
+        .search-form input {
+          flex: 1;
           border: 0;
-          background: #171717;
-          color: white;
-          border-radius: 0 14px 14px 0;
-          font-weight: 800;
+          outline: 0;
+          background: transparent;
+          padding: 14px 18px;
+          min-width: 0;
+        }
+
+        .search-form button {
+          border: 0;
+          background: #111;
+          color: #fff;
+          padding: 0 22px;
+          font-weight: 700;
         }
 
         .header-actions {
@@ -2041,145 +2263,120 @@ export default function Home() {
           gap: 8px;
         }
 
-        .header-action {
-          border: 1px solid #ded8ce;
-          background: white;
-          border-radius: 12px;
-          padding: 10px 13px;
-          font-weight: 700;
+        .header-actions > button {
+          border: 0;
+          background: transparent;
+          padding: 10px 8px;
+          font-weight: 600;
+          color: #222;
         }
 
         .cart-button {
           position: relative;
-          border: 0;
-          background: #171717;
-          color: white;
-          border-radius: 12px;
-          padding: 11px 15px;
-          font-weight: 800;
         }
 
         .cart-count {
-          position: absolute;
-          top: -7px;
-          right: -7px;
-          min-width: 21px;
-          height: 21px;
-          padding: 0 5px;
-          border-radius: 999px;
-          background: #d94841;
-          color: white;
-          font-size: 11px;
-          display: flex;
+          display: inline-flex;
           align-items: center;
           justify-content: center;
+          min-width: 20px;
+          height: 20px;
+          padding: 0 5px;
+          margin-left: 5px;
+          border-radius: 999px;
+          background: #111;
+          color: white;
+          font-size: 11px;
         }
 
         .category-bar {
-          border-top: 1px solid #ebe6dc;
-          border-bottom: 1px solid #e5e0d6;
-          background: #fbfaf7;
-          overflow-x: auto;
+          background: white;
+          border-bottom: 1px solid
+            #e5e5e5;
         }
 
         .category-inner {
-          max-width: 1400px;
-          margin: auto;
-          padding: 0 24px;
+          max-width: 1500px;
+          margin: 0 auto;
+          padding: 10px 24px;
           display: flex;
           gap: 8px;
-          min-height: 52px;
-          align-items: center;
+          overflow-x: auto;
         }
 
         .category-button {
-          border: 0;
-          background: transparent;
-          padding: 9px 14px;
+          border: 1px solid
+            #ddd;
+          background: white;
           border-radius: 999px;
+          padding: 9px 16px;
           white-space: nowrap;
-          color: #5e5a53;
-          font-weight: 700;
+          font-weight: 600;
         }
 
         .category-button.active {
-          background: #171717;
+          background: #111;
           color: white;
+          border-color: #111;
         }
 
         .hero {
-          max-width: 1400px;
+          max-width: 1500px;
           margin: 0 auto;
-          padding: 42px 24px 20px;
-        }
-
-        .hero-box {
-          min-height: 410px;
-          border-radius: 28px;
-          background: #ded8cb;
-          display: flex;
-          align-items: center;
-          overflow: hidden;
-          position: relative;
+          padding: 50px 24px 25px;
         }
 
         .hero-content {
-          max-width: 650px;
-          padding: 55px;
-          position: relative;
-          z-index: 2;
+          border-radius: 28px;
+          padding: 70px;
+          background: #111;
+          color: white;
         }
 
+        .hero-eyebrow,
         .eyebrow {
-          margin: 0 0 9px;
+          display: block;
+          text-transform: uppercase;
+          letter-spacing: 1.5px;
           font-size: 12px;
-          font-weight: 900;
-          letter-spacing: 0.16em;
-          color: #777168;
+          font-weight: 800;
+          opacity: 0.65;
+          margin-bottom: 12px;
         }
 
         .hero h1 {
+          max-width: 700px;
           margin: 0;
-          font-size: clamp(42px, 6vw, 76px);
-          line-height: 0.94;
-          letter-spacing: -0.065em;
+          font-size: clamp(
+            40px,
+            6vw,
+            76px
+          );
+          line-height: 0.95;
+          letter-spacing: -4px;
         }
 
         .hero p {
-          max-width: 570px;
+          max-width: 620px;
           font-size: 18px;
           line-height: 1.6;
-          color: #555047;
-          margin: 24px 0;
+          color: #d7d7d7;
+          margin: 25px 0;
         }
 
         .hero-button {
           border: 0;
-          border-radius: 13px;
-          background: #171717;
-          color: white;
-          padding: 14px 21px;
-          font-weight: 900;
+          border-radius: 999px;
+          padding: 14px 22px;
+          background: white;
+          color: #111;
+          font-weight: 800;
         }
 
-        .hero-decoration {
-          position: absolute;
-          right: -80px;
-          bottom: -130px;
-          width: 480px;
-          height: 480px;
-          border-radius: 50%;
-          background: rgba(255, 255, 255, 0.35);
-        }
-
-        .content {
-          max-width: 1400px;
-          margin: auto;
-          padding: 20px 24px 80px;
-        }
-
-        .product-section {
-          margin-top: 42px;
+        .products-section {
+          max-width: 1500px;
+          margin: 0 auto;
+          padding: 45px 24px 80px;
         }
 
         .section-heading {
@@ -2187,68 +2384,81 @@ export default function Home() {
           align-items: end;
           justify-content: space-between;
           gap: 20px;
-          margin-bottom: 17px;
+          margin-bottom: 25px;
         }
 
         .section-heading h2 {
           margin: 0;
-          font-size: 31px;
-          letter-spacing: -0.045em;
+          font-size: clamp(
+            30px,
+            4vw,
+            48px
+          );
+          letter-spacing: -2px;
         }
 
-        .see-all {
-          border: 1px solid #d8d2c7;
-          background: white;
-          border-radius: 11px;
-          padding: 9px 13px;
-          font-weight: 800;
+        .section-heading
+          .eyebrow {
+          color: #666;
+          margin-bottom: 7px;
+        }
+
+        .product-count {
+          color: #777;
+          font-weight: 700;
+          white-space: nowrap;
         }
 
         .product-grid {
           display: grid;
-          grid-template-columns: repeat(4, minmax(0, 1fr));
-          gap: 16px;
+          grid-template-columns: repeat(
+            5,
+            minmax(0, 1fr)
+          );
+          gap: 18px;
         }
 
         .product-card {
-          text-align: left;
-          padding: 0;
-          border: 1px solid #e5e0d6;
           background: white;
+          border: 1px solid
+            #e7e7e7;
           border-radius: 18px;
           overflow: hidden;
+          min-width: 0;
           transition:
             transform 0.2s ease,
             box-shadow 0.2s ease;
         }
 
         .product-card:hover {
-          transform: translateY(-3px);
-          box-shadow: 0 12px 35px rgba(20, 20, 20, 0.09);
+          transform: translateY(
+            -3px
+          );
+          box-shadow:
+            0 12px 35px
+              rgba(
+                0,
+                0,
+                0,
+                0.08
+              );
         }
 
-        .product-image-wrap {
-          aspect-ratio: 1 / 1;
-          background: #eeeae2;
+        .product-image-button {
+          display: block;
+          width: 100%;
+          aspect-ratio: 1;
+          padding: 0;
+          border: 0;
+          background: #f3f3f3;
           overflow: hidden;
         }
 
         .product-image {
           width: 100%;
           height: 100%;
-          object-fit: cover;
           display: block;
-        }
-
-        .image-placeholder {
-          width: 100%;
-          height: 100%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 60px;
-          font-weight: 900;
-          color: #aaa39a;
+          object-fit: cover;
         }
 
         .product-info {
@@ -2256,311 +2466,494 @@ export default function Home() {
         }
 
         .product-category {
-          color: #80786e;
-          font-size: 11px;
-          font-weight: 900;
-          letter-spacing: 0.1em;
+          color: #888;
           text-transform: uppercase;
+          letter-spacing: 0.8px;
+          font-size: 10px;
+          font-weight: 800;
+          margin-bottom: 8px;
         }
 
-        .product-info h3 {
-          margin: 7px 0 7px;
-          font-size: 16px;
-          line-height: 1.25;
-          min-height: 40px;
-        }
-
-        .product-info p {
-          margin: 0;
-          color: #716c65;
-          font-size: 13px;
-          line-height: 1.45;
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-          min-height: 38px;
+        .product-name {
+          border: 0;
+          background: transparent;
+          padding: 0;
+          width: 100%;
+          text-align: left;
+          font-weight: 700;
+          line-height: 1.35;
+          min-height: 48px;
+          color: #161616;
         }
 
         .product-bottom {
-          margin-top: 13px;
           display: flex;
-          justify-content: space-between;
           align-items: center;
-          gap: 10px;
+          justify-content: space-between;
+          gap: 8px;
+          margin-top: 14px;
         }
 
-        .product-bottom strong {
+        .product-price {
           font-size: 18px;
         }
 
-        .view-product {
-          color: #777168;
-          font-size: 12px;
-          font-weight: 900;
-        }
-
-        .loading-box,
-        .empty-section,
-        .error-box {
-          background: white;
-          border: 1px solid #e5e0d6;
-          border-radius: 17px;
-          padding: 30px;
-          text-align: center;
-          color: #716c65;
-        }
-
-        .error-box {
-          color: #8a3f3a;
-        }
-
-        .load-more-wrap {
-          display: flex;
-          justify-content: center;
-          margin-top: 28px;
-        }
-
-        .load-more-button {
+        .add-button {
           border: 0;
-          background: #171717;
+          background: #111;
           color: white;
-          border-radius: 13px;
-          padding: 13px 21px;
-          font-weight: 900;
+          border-radius: 999px;
+          padding: 8px 13px;
+          font-weight: 800;
         }
 
-        .load-more-button:disabled {
-          opacity: 0.6;
-          cursor: wait;
+        .empty-products {
+          padding: 80px 20px;
+          text-align: center;
+          background: white;
+          border: 1px solid
+            #e5e5e5;
+          border-radius: 20px;
         }
 
-        .footer {
-          background: #171717;
-          color: white;
-          margin-top: 60px;
-        }
-
-        .footer-inner {
-          max-width: 1400px;
-          margin: auto;
-          padding: 45px 24px;
+        .loading {
+          min-height: 350px;
           display: flex;
-          justify-content: space-between;
-          gap: 30px;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          gap: 15px;
+          color: #666;
         }
 
-        .footer h2 {
-          margin: 0 0 8px;
+        .spinner {
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          border: 4px solid
+            #ddd;
+          border-top-color: #111;
+          animation: spin
+            0.8s linear infinite;
         }
 
-        .footer p {
-          margin: 0;
-          color: #bdb8b0;
+        @keyframes spin {
+          to {
+            transform: rotate(
+              360deg
+            );
+          }
         }
 
-        .footer-links {
-          display: flex;
-          gap: 25px;
-          color: #d8d3cb;
+        .notice {
+          margin-bottom: 20px;
+          padding: 14px 16px;
+          background: #fff;
+          border: 1px solid
+            #ddd;
+          border-radius: 12px;
+          color: #555;
         }
 
-        .overlay {
+        .modal-backdrop,
+        .cart-backdrop,
+        .account-backdrop {
           position: fixed;
           inset: 0;
-          background: rgba(0, 0, 0, 0.48);
-          z-index: 80;
+          z-index: 100;
+          background: rgba(
+            0,
+            0,
+            0,
+            0.58
+          );
           display: flex;
           align-items: center;
           justify-content: center;
           padding: 20px;
         }
 
-        .modal {
-          width: min(850px, 100%);
-          max-height: 90vh;
-          overflow-y: auto;
-          background: white;
-          border-radius: 24px;
+        .product-modal {
           position: relative;
-        }
-
-        .modal-close {
-          position: absolute;
-          right: 15px;
-          top: 15px;
-          width: 38px;
-          height: 38px;
-          border: 0;
-          border-radius: 50%;
-          background: #171717;
-          color: white;
-          font-size: 20px;
-          z-index: 3;
-        }
-
-        .product-detail {
+          width: min(
+            1000px,
+            100%
+          );
+          max-height: 90vh;
+          overflow: auto;
           display: grid;
           grid-template-columns: 1fr 1fr;
+          background: white;
+          border-radius: 24px;
+          overflow: hidden;
         }
 
-        .detail-image {
-          min-height: 480px;
-          background: #eeeae2;
+        .modal-image-wrap {
+          background: #f3f3f3;
+          min-height: 500px;
         }
 
-        .detail-image img {
+        .modal-image {
           width: 100%;
           height: 100%;
+          min-height: 500px;
           object-fit: cover;
         }
 
-        .detail-content {
-          padding: 45px;
+        .modal-details {
+          padding: 50px;
           display: flex;
           flex-direction: column;
           justify-content: center;
         }
 
-        .detail-content h2 {
-          font-size: 38px;
-          line-height: 1;
-          letter-spacing: -0.05em;
-          margin: 8px 0 15px;
+        .modal-category {
+          text-transform: uppercase;
+          color: #888;
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 1px;
         }
 
-        .detail-price {
-          font-size: 27px;
-          font-weight: 900;
+        .modal-details h2 {
+          font-size: 36px;
+          line-height: 1.05;
+          letter-spacing: -1.5px;
+          margin: 12px 0;
+        }
+
+        .modal-price {
+          font-size: 28px;
+          font-weight: 800;
           margin-bottom: 20px;
         }
 
-        .detail-description {
-          color: #66615a;
-          line-height: 1.65;
+        .modal-details p {
+          line-height: 1.7;
+          color: #666;
         }
 
-        .add-button {
+        .modal-add-button {
           margin-top: 25px;
           border: 0;
-          background: #171717;
+          background: #111;
           color: white;
           padding: 15px 20px;
-          border-radius: 13px;
-          font-weight: 900;
+          border-radius: 999px;
+          font-weight: 800;
+        }
+
+        .close-button {
+          position: absolute;
+          top: 15px;
+          right: 15px;
+          z-index: 2;
+          width: 40px;
+          height: 40px;
+          border: 0;
+          border-radius: 50%;
+          background: rgba(
+            255,
+            255,
+            255,
+            0.95
+          );
+          font-size: 26px;
+          line-height: 1;
+        }
+
+        .cart-backdrop {
+          justify-content: flex-end;
+          padding: 0;
         }
 
         .cart-drawer {
-          margin-left: auto;
           height: 100%;
-          width: min(470px, 100%);
+          width: min(
+            480px,
+            100%
+          );
           background: white;
-          padding: 25px;
-          overflow-y: auto;
+          display: flex;
+          flex-direction: column;
+          box-shadow:
+            -15px 0 50px
+              rgba(
+                0,
+                0,
+                0,
+                0.15
+              );
         }
 
-        .cart-heading {
+        .cart-header {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 20px;
+          padding: 22px;
+          border-bottom: 1px solid
+            #eee;
         }
 
-        .cart-heading h2 {
+        .cart-header h2 {
           margin: 0;
         }
 
-        .cart-close {
-          border: 0;
-          background: #eeeae2;
-          width: 38px;
-          height: 38px;
-          border-radius: 50%;
+        .cart-items {
+          flex: 1;
+          overflow-y: auto;
+          padding: 18px;
         }
 
         .cart-item {
-          display: grid;
-          grid-template-columns: 75px 1fr auto;
+          display: flex;
           gap: 12px;
-          padding: 14px 0;
-          border-bottom: 1px solid #eeeae2;
+          padding: 12px 0;
+          border-bottom: 1px solid
+            #eee;
         }
 
         .cart-item img {
-          width: 75px;
-          height: 75px;
-          border-radius: 10px;
+          width: 82px;
+          height: 82px;
+          border-radius: 12px;
           object-fit: cover;
-          background: #eeeae2;
+          background: #f2f2f2;
         }
 
-        .cart-item h3 {
-          margin: 0 0 6px;
-          font-size: 14px;
-        }
-
-        .cart-item-price {
-          font-weight: 900;
-        }
-
-        .quantity-controls {
+        .cart-item-info {
+          flex: 1;
           display: flex;
-          align-items: center;
-          gap: 7px;
-          margin-top: 9px;
+          flex-direction: column;
+          gap: 5px;
         }
 
-        .quantity-controls button {
-          width: 27px;
-          height: 27px;
-          border: 1px solid #ddd7cd;
-          background: white;
-          border-radius: 7px;
+        .cart-item-info strong {
+          line-height: 1.3;
         }
 
         .remove-button {
+          align-self: flex-start;
           border: 0;
           background: transparent;
-          color: #9a4c45;
-          font-size: 12px;
           padding: 0;
-          margin-top: 7px;
+          color: #777;
+          text-decoration: underline;
         }
 
-        .cart-total {
+        .cart-summary {
+          border-top: 1px solid
+            #eee;
+          padding: 20px;
+        }
+
+        .subtotal-row {
           display: flex;
           justify-content: space-between;
           font-size: 20px;
-          font-weight: 900;
-          margin-top: 25px;
+        }
+
+        .checkout-note {
+          color: #777;
+          font-size: 13px;
+          line-height: 1.5;
         }
 
         .checkout-button {
           width: 100%;
-          margin-top: 17px;
           border: 0;
-          background: #171717;
+          border-radius: 999px;
+          background: #111;
           color: white;
           padding: 15px;
-          border-radius: 13px;
-          font-weight: 900;
+          font-weight: 800;
         }
 
         .empty-cart {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          padding: 30px;
           text-align: center;
-          color: #777168;
-          padding: 60px 20px;
         }
 
-        @media (max-width: 1000px) {
+        .empty-cart-icon {
+          font-size: 45px;
+          margin-bottom: 10px;
+        }
+
+        /* ACCOUNT */
+
+        .account-backdrop {
+          z-index: 110;
+        }
+
+        .account-modal {
+          position: relative;
+          width: min(
+            520px,
+            100%
+          );
+          max-height: 90vh;
+          overflow-y: auto;
+          background: white;
+          border-radius: 24px;
+          padding: 45px;
+          box-shadow:
+            0 25px 80px
+              rgba(
+                0,
+                0,
+                0,
+                0.25
+              );
+        }
+
+        .account-modal h2 {
+          margin: 0 0 15px;
+          font-size: 38px;
+          line-height: 1;
+          letter-spacing: -1.5px;
+        }
+
+        .account-note {
+          color: #666;
+          line-height: 1.6;
+        }
+
+        .account-form {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          margin-top: 25px;
+        }
+
+        .account-form input {
+          width: 100%;
+          border: 1px solid
+            #ddd;
+          border-radius: 12px;
+          padding: 14px 15px;
+          outline: none;
+          background: #fafafa;
+        }
+
+        .account-form input:focus {
+          border-color: #111;
+          background: white;
+        }
+
+        .account-form
+          .modal-add-button {
+          margin-top: 5px;
+        }
+
+        .account-switch {
+          width: 100%;
+          border: 0;
+          background: transparent;
+          margin-top: 15px;
+          padding: 8px;
+          color: #555;
+          text-decoration: underline;
+        }
+
+        .account-error {
+          padding: 11px 13px;
+          border-radius: 10px;
+          background: #f7eeee;
+          color: #8a2525;
+          font-size: 14px;
+        }
+
+        .account-info {
+          display: flex;
+          flex-direction: column;
+          gap: 5px;
+          padding: 15px;
+          margin-top: 20px;
+          background: #f6f6f4;
+          border-radius: 14px;
+        }
+
+        .account-info span {
+          color: #666;
+        }
+
+        .footer {
+          background: #111;
+          color: white;
+          padding: 55px 24px 25px;
+        }
+
+        .footer-inner {
+          max-width: 1500px;
+          margin: 0 auto;
+          display: grid;
+          grid-template-columns: 2fr 1fr;
+          gap: 50px;
+        }
+
+        .footer-logo {
+          font-size: 30px;
+          font-weight: 800;
+          margin-bottom: 10px;
+        }
+
+        .footer p {
+          color: #aaa;
+        }
+
+        .footer h4 {
+          margin-top: 0;
+        }
+
+        .footer button {
+          display: block;
+          border: 0;
+          background: transparent;
+          color: #aaa;
+          padding: 5px 0;
+          text-align: left;
+        }
+
+        .footer-bottom {
+          max-width: 1500px;
+          margin: 45px auto 0;
+          padding-top: 20px;
+          border-top: 1px solid
+            #333;
+          color: #777;
+          font-size: 13px;
+        }
+
+        @media (max-width: 1200px) {
           .product-grid {
-            grid-template-columns: repeat(3, minmax(0, 1fr));
+            grid-template-columns: repeat(
+              4,
+              minmax(0, 1fr)
+            );
           }
 
+          .header-actions {
+            gap: 2px;
+          }
+        }
+
+        @media (max-width: 900px) {
           .header-inner {
             flex-wrap: wrap;
-            padding-top: 12px;
-            padding-bottom: 12px;
+          }
+
+          .logo {
+            order: 1;
+          }
+
+          .header-actions {
+            order: 2;
+            margin-left: auto;
           }
 
           .search-form {
@@ -2568,759 +2961,106 @@ export default function Home() {
             flex-basis: 100%;
             max-width: none;
           }
-        }
 
-        @media (max-width: 720px) {
-          .header-actions {
-            margin-left: auto;
-          }
-
-          .header-action {
-            display: none;
-          }
-
-          .hero-box {
-            min-height: 420px;
+          .product-grid {
+            grid-template-columns: repeat(
+              3,
+              minmax(0, 1fr)
+            );
           }
 
           .hero-content {
-            padding: 32px;
+            padding: 45px 30px;
           }
 
-          .product-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 11px;
-          }
-
-          .product-info {
-            padding: 11px;
-          }
-
-          .product-info h3 {
-            font-size: 14px;
-          }
-
-          .product-info p {
-            font-size: 12px;
-          }
-
-          .product-bottom strong {
-            font-size: 16px;
-          }
-
-          .product-detail {
+          .product-modal {
             grid-template-columns: 1fr;
           }
 
-          .detail-image {
-            min-height: 330px;
+          .modal-image-wrap,
+          .modal-image {
+            min-height: 350px;
           }
 
-          .detail-content {
-            padding: 28px;
+          .account-modal {
+            padding: 35px 25px;
+          }
+        }
+
+        @media (max-width: 600px) {
+          .header-inner {
+            padding: 10px 15px;
+          }
+
+          .header-actions > button {
+            font-size: 12px;
+            padding: 8px 4px;
+          }
+
+          .category-inner {
+            padding: 8px 15px;
+          }
+
+          .hero {
+            padding: 20px 15px;
+          }
+
+          .hero-content {
+            padding: 40px 24px;
+            border-radius: 20px;
+          }
+
+          .hero h1 {
+            letter-spacing: -2px;
+          }
+
+          .products-section {
+            padding: 35px 15px 60px;
+          }
+
+          .section-heading {
+            align-items: flex-start;
+            flex-direction: column;
+          }
+
+          .product-grid {
+            grid-template-columns: repeat(
+              2,
+              minmax(0, 1fr)
+            );
+            gap: 10px;
+          }
+
+          .product-info {
+            padding: 10px;
+          }
+
+          .product-name {
+            font-size: 14px;
+          }
+
+          .product-price {
+            font-size: 15px;
+          }
+
+          .add-button {
+            padding: 7px 10px;
+            font-size: 12px;
+          }
+
+          .modal-details {
+            padding: 30px 22px;
           }
 
           .footer-inner {
-            flex-direction: column;
+            grid-template-columns: 1fr;
+          }
+
+          .account-modal h2 {
+            font-size: 32px;
           }
         }
       `}</style>
-
-      <div className="marlow-page">
-        <div className="topbar">
-          FREE SHIPPING OPTIONS AVAILABLE ON SELECT PRODUCTS
-        </div>
-
-        <header className="header">
-          <div className="header-inner">
-            <button
-              type="button"
-              className="logo"
-              onClick={showHome}
-            >
-              MARLOW
-            </button>
-
-            <form
-              className="search-form"
-              onSubmit={
-                handleSearchSubmit
-              }
-            >
-              <input
-                className="search-input"
-                value={search}
-                onChange={
-                  handleSearchChange
-                }
-                placeholder="Search products, categories, shoes, electronics..."
-                aria-label="Search products"
-              />
-
-              <button
-                className="search-button"
-                type="submit"
-              >
-                Search
-              </button>
-            </form>
-
-            <div className="header-actions">
-              <button
-                className="header-action"
-                type="button"
-                onClick={() =>
-                  alert(
-                    "Customer accounts will be connected in the secure checkout stage."
-                  )
-                }
-              >
-                Account
-              </button>
-
-              <button
-                className="header-action"
-                type="button"
-                onClick={() =>
-                  alert(
-                    "Order history will be available after customer accounts are connected."
-                  )
-                }
-              >
-                Orders
-              </button>
-
-              <button
-                className="cart-button"
-                type="button"
-                onClick={() =>
-                  setCartOpen(
-                    true
-                  )
-                }
-              >
-                Cart
-
-                {cartCount >
-                0 ? (
-                  <span className="cart-count">
-                    {cartCount}
-                  </span>
-                ) : null}
-              </button>
-            </div>
-          </div>
-
-          <nav className="category-bar">
-            <div className="category-inner">
-              {categories.map(
-                (item) => (
-                  <button
-                    key={item}
-                    type="button"
-                    className={`category-button ${
-                      category ===
-                      item
-                        ? "active"
-                        : ""
-                    }`}
-                    onClick={() =>
-                      handleCategoryClick(
-                        item
-                      )
-                    }
-                  >
-                    {item}
-                  </button>
-                )
-              )}
-            </div>
-          </nav>
-        </header>
-
-        {!showSearchResults &&
-        !showCategoryResults ? (
-          <section className="hero">
-            <div className="hero-box">
-              <div className="hero-content">
-                <p className="eyebrow">
-                  WELCOME TO MARLOW
-                </p>
-
-                <h1>
-                  Shop more.
-                  <br />
-                  Find your style.
-                </h1>
-
-                <p>
-                  Discover electronics,
-                  home essentials,
-                  clothing, beauty,
-                  sports, toys, travel
-                  products, tools, and
-                  more—all in one place.
-                </p>
-
-                <button
-                  type="button"
-                  className="hero-button"
-                  onClick={() =>
-                    document
-                      .getElementById(
-                        "featured"
-                      )
-                      ?.scrollIntoView(
-                        {
-                          behavior:
-                            "smooth",
-                        }
-                      )
-                  }
-                >
-                  Shop the collection
-                </button>
-              </div>
-
-              <div className="hero-decoration" />
-            </div>
-          </section>
-        ) : null}
-
-        <div className="content">
-          {showSearchResults ? (
-            <section className="product-section">
-              <div className="section-heading">
-                <div>
-                  <p className="eyebrow">
-                    SEARCH RESULTS
-                  </p>
-
-                  <h2>
-                    Results for "
-                    {searchQuery}"
-                  </h2>
-                </div>
-              </div>
-
-              {searchingSupplier ? (
-                <div className="loading-box">
-                  Finding products...
-                </div>
-              ) : supplierError ? (
-                <div className="error-box">
-                  {supplierError}
-                </div>
-              ) : visibleProducts.length >
-                0 ? (
-                <>
-                  <div className="product-grid">
-                    {visibleProducts.map(
-                      (item) => (
-                        <ProductCard
-                          key={
-                            item.id
-                          }
-                          product={
-                            item
-                          }
-                          onOpen={
-                            openProduct
-                          }
-                        />
-                      )
-                    )}
-                  </div>
-
-                  {canLoadMore ? (
-                    <div className="load-more-wrap">
-                      <button
-                        type="button"
-                        className="load-more-button"
-                        onClick={
-                          loadMoreSearchResults
-                        }
-                        disabled={
-                          loadingMore
-                        }
-                      >
-                        {loadingMore
-                          ? "Loading more..."
-                          : "Load more products"}
-                      </button>
-                    </div>
-                  ) : null}
-                </>
-              ) : hasSearched ? (
-                <div className="empty-section">
-                  No products match
-                  that search.
-                </div>
-              ) : null}
-            </section>
-          ) : null}
-
-          {showCategoryResults ? (
-            <section className="product-section">
-              <div className="section-heading">
-                <div>
-                  <p className="eyebrow">
-                    MARLOW CATEGORY
-                  </p>
-
-                  <h2>
-                    {category}
-                  </h2>
-                </div>
-              </div>
-
-              {loadingCategory ? (
-                <div className="loading-box">
-                  Finding products
-                  in {category}...
-                </div>
-              ) : categoryProducts.length >
-                0 ? (
-                <div className="product-grid">
-                  {categoryProducts.map(
-                    (item) => (
-                      <ProductCard
-                        key={
-                          item.id
-                        }
-                        product={
-                          item
-                        }
-                        onOpen={
-                          openProduct
-                        }
-                      />
-                    )
-                  )}
-                </div>
-              ) : (
-                <div className="empty-section">
-                  More{" "}
-                  {category.toLowerCase()}{" "}
-                  products will be
-                  added soon.
-                </div>
-              )}
-            </section>
-          ) : null}
-
-          {!showSearchResults &&
-          !showCategoryResults ? (
-            <>
-              {homeError ? (
-                <div className="error-box">
-                  {homeError}
-                </div>
-              ) : null}
-
-              {loadingHomeProducts ? (
-                <div className="loading-box">
-                  Loading Marlow's
-                  collection...
-                </div>
-              ) : null}
-
-              <div id="featured">
-                <ProductSection
-                  title="Featured Products"
-                  products={
-                    featuredProducts
-                  }
-                  onOpen={
-                    openProduct
-                  }
-                  onSeeAll={() =>
-                    window.scrollTo(
-                      {
-                        top: document
-                          .body
-                          .scrollHeight,
-                        behavior:
-                          "smooth",
-                      }
-                    )
-                  }
-                />
-              </div>
-
-              <ProductSection
-                title="Trending Now"
-                products={
-                  trendingProducts
-                }
-                onOpen={
-                  openProduct
-                }
-                onSeeAll={() =>
-                  document
-                    .getElementById(
-                      "featured"
-                    )
-                    ?.scrollIntoView(
-                      {
-                        behavior:
-                          "smooth",
-                      }
-                    )
-                }
-              />
-
-              <ProductSection
-                title="Electronics"
-                products={
-                  electronicsProducts
-                }
-                onOpen={
-                  openProduct
-                }
-                onSeeAll={() =>
-                  handleCategoryClick(
-                    "Electronics"
-                  )
-                }
-              />
-
-              <ProductSection
-                title="Home & Kitchen"
-                products={
-                  homeKitchenProducts
-                }
-                onOpen={
-                  openProduct
-                }
-                onSeeAll={() =>
-                  handleCategoryClick(
-                    "Home"
-                  )
-                }
-              />
-
-              <ProductSection
-                title="Marlow Deals"
-                products={
-                  dealProducts
-                }
-                onOpen={
-                  openProduct
-                }
-              />
-
-              <ProductSection
-                title="More Marlow Products"
-                products={homeProducts.slice(
-                  16,
-                  40
-                )}
-                onOpen={
-                  openProduct
-                }
-                onSeeAll={() =>
-                  window.scrollTo(
-                    {
-                      top:
-                        document.body
-                          .scrollHeight,
-                      behavior:
-                        "smooth",
-                    }
-                  )
-                }
-              />
-            </>
-          ) : null}
-        </div>
-
-        <footer className="footer">
-          <div className="footer-inner">
-            <div>
-              <h2>
-                MARLOW
-              </h2>
-
-              <p>
-                A simple place to
-                discover products you
-                love.
-              </p>
-            </div>
-
-            <div className="footer-links">
-              <span>
-                Shop
-              </span>
-
-              <span>
-                Help
-              </span>
-
-              <span>
-                About
-              </span>
-            </div>
-          </div>
-        </footer>
-
-        {product ? (
-          <div
-            className="overlay"
-            onClick={() =>
-              setProduct(
-                null
-              )
-            }
-          >
-            <div
-              className="modal"
-              onClick={(event) =>
-                event.stopPropagation()
-              }
-            >
-              <button
-                type="button"
-                className="modal-close"
-                onClick={() =>
-                  setProduct(
-                    null
-                  )
-                }
-              >
-                ×
-              </button>
-
-              <div className="product-detail">
-                <div className="detail-image">
-                  {product.image ? (
-                    <img
-                      src={
-                        product.image
-                      }
-                      alt={
-                        product.name
-                      }
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="image-placeholder">
-                      M
-                    </div>
-                  )}
-                </div>
-
-                <div className="detail-content">
-                  <p className="eyebrow">
-                    {
-                      product.category
-                    }
-                  </p>
-
-                  <h2>
-                    {product.name}
-                  </h2>
-
-                  <div className="detail-price">
-                    $
-                    {Number(
-                      product.price ||
-                        0
-                    ).toFixed(2)}
-                  </div>
-
-                  <p className="detail-description">
-                    {
-                      product.description
-                    }
-                  </p>
-
-                  <button
-                    type="button"
-                    className="add-button"
-                    onClick={() =>
-                      addToCart(
-                        product
-                      )
-                    }
-                  >
-                    Add to cart
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : null}
-
-        {cartOpen ? (
-          <div
-            className="overlay"
-            onClick={() =>
-              setCartOpen(
-                false
-              )
-            }
-          >
-            <aside
-              className="cart-drawer"
-              onClick={(event) =>
-                event.stopPropagation()
-              }
-            >
-              <div className="cart-heading">
-                <h2>
-                  Your Cart
-                </h2>
-
-                <button
-                  type="button"
-                  className="cart-close"
-                  onClick={() =>
-                    setCartOpen(
-                      false
-                    )
-                  }
-                >
-                  ×
-                </button>
-              </div>
-
-              {cart.length ===
-              0 ? (
-                <div className="empty-cart">
-                  Your cart is
-                  empty.
-                </div>
-              ) : (
-                <>
-                  {cart.map(
-                    (item) => (
-                      <div
-                        className="cart-item"
-                        key={
-                          item.id
-                        }
-                      >
-                        {item.image ? (
-                          <img
-                            src={
-                              item.image
-                            }
-                            alt={
-                              item.name
-                            }
-                            loading="lazy"
-                          />
-                        ) : (
-                          <div className="image-placeholder">
-                            M
-                          </div>
-                        )}
-
-                        <div>
-                          <h3>
-                            {
-                              item.name
-                            }
-                          </h3>
-
-                          <div className="cart-item-price">
-                            $
-                            {Number(
-                              item.price ||
-                                0
-                            ).toFixed(
-                              2
-                            )}
-                          </div>
-
-                          <div className="quantity-controls">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                decreaseQuantity(
-                                  item.id
-                                )
-                              }
-                            >
-                              −
-                            </button>
-
-                            <span>
-                              {
-                                item.quantity
-                              }
-                            </span>
-
-                            <button
-                              type="button"
-                              onClick={() =>
-                                increaseQuantity(
-                                  item.id
-                                )
-                              }
-                            >
-                              +
-                            </button>
-                          </div>
-
-                          <button
-                            type="button"
-                            className="remove-button"
-                            onClick={() =>
-                              removeFromCart(
-                                item.id
-                              )
-                            }
-                          >
-                            Remove
-                          </button>
-                        </div>
-
-                        <strong>
-                          $
-                          {Number(
-                            item.price *
-                              item.quantity
-                          ).toFixed(
-                            2
-                          )}
-                        </strong>
-                      </div>
-                    )
-                  )}
-
-                  <div className="cart-total">
-                    <span>
-                      Subtotal
-                    </span>
-
-                    <span>
-                      $
-                      {cartTotal.toFixed(
-                        2
-                      )}
-                    </span>
-                  </div>
-
-                  <button
-                    type="button"
-                    className="checkout-button"
-                    onClick={() =>
-                      alert(
-                        "Checkout will be available after customer accounts, tax, shipping, and secure payments are connected."
-                      )
-                    }
-                  >
-                    Checkout
-                  </button>
-                </>
-              )}
-            </aside>
-          </div>
-        ) : null}
-      </div>
     </main>
   );
 }
