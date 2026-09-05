@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+
+const HOME_PRODUCT_LIMIT = 375;
 
 const demoProducts = [
   {
@@ -20,7 +22,8 @@ const demoProducts = [
     image:
       "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=900&q=80",
     category: "Electronics",
-    description: "Modern smartwatch design for everyday use.",
+    description:
+      "Modern smartwatch design for everyday use.",
   },
   {
     id: "demo-3",
@@ -29,7 +32,8 @@ const demoProducts = [
     image:
       "https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&w=900&q=80",
     category: "Home",
-    description: "Reusable insulated bottle for home, work, or travel.",
+    description:
+      "Reusable insulated bottle for home, work, or travel.",
   },
   {
     id: "demo-4",
@@ -38,7 +42,8 @@ const demoProducts = [
     image:
       "https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?auto=format&fit=crop&w=900&q=80",
     category: "Electronics",
-    description: "Portable wireless speaker for music anywhere.",
+    description:
+      "Portable wireless speaker for music anywhere.",
   },
   {
     id: "demo-5",
@@ -47,7 +52,8 @@ const demoProducts = [
     image:
       "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=900&q=80",
     category: "Home",
-    description: "Clean modern lighting for your desk or workspace.",
+    description:
+      "Clean modern lighting for your desk or workspace.",
   },
   {
     id: "demo-6",
@@ -56,7 +62,8 @@ const demoProducts = [
     image:
       "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=900&q=80",
     category: "Travel",
-    description: "Roomy backpack for everyday travel and commuting.",
+    description:
+      "Roomy backpack for everyday travel and commuting.",
   },
   {
     id: "demo-7",
@@ -65,7 +72,8 @@ const demoProducts = [
     image:
       "https://images.unsplash.com/photo-1584100936595-c0654b55a2e2?auto=format&fit=crop&w=900&q=80",
     category: "Home",
-    description: "Soft decorative throw blanket for your home.",
+    description:
+      "Soft decorative throw blanket for your home.",
   },
   {
     id: "demo-8",
@@ -74,7 +82,8 @@ const demoProducts = [
     image:
       "https://images.unsplash.com/photo-1556911220-bff31c812dba?auto=format&fit=crop&w=900&q=80",
     category: "Home",
-    description: "Useful organization products for your kitchen.",
+    description:
+      "Useful organization products for your kitchen.",
   },
 ];
 
@@ -95,17 +104,11 @@ const categorySearches = {
     "electronics",
     "phone accessories",
     "headphones",
-    "earbuds",
     "smart watch",
     "computer accessories",
-    "laptop accessories",
     "speakers",
     "chargers",
-    "usb cable",
-    "bluetooth",
-    "gaming accessories",
   ],
-
   Home: [
     "home",
     "kitchen",
@@ -114,96 +117,54 @@ const categorySearches = {
     "lighting",
     "bedding",
     "bathroom",
-    "organization",
-    "furniture",
-    "household",
   ],
-
   Clothing: [
     "clothing",
     "shirts",
-    "t shirts",
     "pants",
-    "jeans",
     "dresses",
     "hoodies",
     "jackets",
-    "coats",
-    "skirts",
-    "sweaters",
     "shoes",
-    "sneakers",
-    "sandals",
-    "boots",
     "bags",
   ],
-
   Beauty: [
     "beauty",
     "makeup",
     "skincare",
-    "skin care",
     "hair care",
     "cosmetics",
     "grooming",
-    "nail",
-    "lipstick",
-    "mascara",
-    "serum",
   ],
-
   Sports: [
     "sports",
     "fitness",
     "exercise",
     "gym",
-    "workout",
-    "yoga",
-    "football",
-    "basketball",
-    "soccer",
-    "baseball",
-    "camping",
-    "hiking",
     "outdoor sports",
+    "camping",
   ],
-
   Toys: [
     "toys",
     "kids toys",
-    "children toys",
     "games",
     "puzzles",
     "RC toys",
-    "remote control toys",
     "educational toys",
-    "dolls",
-    "building toys",
   ],
-
   Travel: [
     "travel",
     "luggage",
     "suitcase",
     "backpack",
-    "travel bag",
     "travel accessories",
-    "travel organizer",
-    "passport holder",
-    "packing organizer",
+    "travel organizers",
   ],
-
   Tools: [
     "tools",
     "hand tools",
     "hardware",
-    "drill",
-    "screwdriver",
-    "wrench",
-    "pliers",
-    "hammer",
     "automotive tools",
-    "repair tools",
     "tool accessories",
   ],
 };
@@ -214,6 +175,7 @@ function getSupplierName(item) {
     item?.name ||
     item?.productName ||
     item?.title ||
+    item?.productTitle ||
     "Marlow Product"
   );
 }
@@ -224,6 +186,7 @@ function getSupplierImage(item) {
     item?.image ||
     item?.imageUrl ||
     item?.productImage ||
+    item?.productImageUrl ||
     item?.skuImage ||
     ""
   );
@@ -232,15 +195,21 @@ function getSupplierImage(item) {
 function getSupplierCost(item) {
   const possiblePrices = [
     item?.nowPrice,
-    item?.sellPrice,
     item?.discountPrice,
+    item?.sellPrice,
+    item?.productPrice,
     item?.price,
+    item?.minPrice,
+    item?.costPrice,
   ];
 
   for (const value of possiblePrices) {
     const number = Number(value);
 
-    if (Number.isFinite(number) && number > 0) {
+    if (
+      Number.isFinite(number) &&
+      number > 0
+    ) {
       return number;
     }
   }
@@ -251,7 +220,10 @@ function getSupplierCost(item) {
 function calculateMarlowPrice(cost) {
   const number = Number(cost);
 
-  if (!Number.isFinite(number) || number <= 0) {
+  if (
+    !Number.isFinite(number) ||
+    number <= 0
+  ) {
     return 0;
   }
 
@@ -270,7 +242,10 @@ function calculateMarlowPrice(cost) {
   }
 
   return Number(
-    Math.max(number * (1 + markup), number + 1).toFixed(2)
+    Math.max(
+      number * (1 + markup),
+      number + 1
+    ).toFixed(2)
   );
 }
 
@@ -279,7 +254,7 @@ function inferMarlowCategory(item) {
     ${item?.nameEn || ""}
     ${item?.name || ""}
     ${item?.productName || ""}
-    ${item?.title || ""}
+    ${item?.productTitle || ""}
     ${item?.threeCategoryName || ""}
     ${item?.twoCategoryName || ""}
     ${item?.oneCategoryName || ""}
@@ -288,7 +263,7 @@ function inferMarlowCategory(item) {
   `.toLowerCase();
 
   if (
-    /phone|iphone|android|charger|cable|headphone|earbud|speaker|computer|laptop|tablet|smartwatch|smart watch|camera|electronic|keyboard|mouse|usb|bluetooth|gaming console|monitor|projector/.test(
+    /phone|iphone|android|charger|cable|headphone|earbud|speaker|computer|laptop|tablet|watch|camera|electronic|keyboard|mouse|usb|bluetooth|gaming console/.test(
       text
     )
   ) {
@@ -304,7 +279,7 @@ function inferMarlowCategory(item) {
   }
 
   if (
-    /makeup|cosmetic|skincare|skin care|lipstick|mascara|foundation|serum|beauty|hair care|haircare|shampoo|conditioner|grooming|nail|eyelash|perfume/.test(
+    /makeup|cosmetic|skincare|skin care|lipstick|mascara|foundation|serum|beauty|hair care|shampoo|conditioner|grooming|nail/.test(
       text
     )
   ) {
@@ -312,7 +287,7 @@ function inferMarlowCategory(item) {
   }
 
   if (
-    /fitness|gym|exercise|sport|sports|workout|yoga|football|basketball|soccer|baseball|camping|hiking|outdoor|running|cycling|weight/.test(
+    /fitness|gym|exercise|sport|sports|workout|yoga|football|basketball|soccer|baseball|camping|hiking|outdoor/.test(
       text
     )
   ) {
@@ -320,7 +295,7 @@ function inferMarlowCategory(item) {
   }
 
   if (
-    /toy|toys|kids|children|puzzle|game|rc car|remote control|educational|doll|lego|building block|stuffed animal/.test(
+    /toy|toys|kids|children|puzzle|game|rc car|remote control|educational|doll|lego/.test(
       text
     )
   ) {
@@ -328,7 +303,7 @@ function inferMarlowCategory(item) {
   }
 
   if (
-    /travel|luggage|suitcase|backpack|passport|travel bag|organizer|camping bag|packing/.test(
+    /travel|luggage|suitcase|backpack|passport|travel bag|organizer|camping bag/.test(
       text
     )
   ) {
@@ -336,7 +311,7 @@ function inferMarlowCategory(item) {
   }
 
   if (
-    /tool|hardware|drill|screwdriver|wrench|pliers|hammer|automotive|repair|workshop|socket|ratchet/.test(
+    /tool|hardware|drill|screwdriver|wrench|pliers|hammer|automotive|repair|workshop/.test(
       text
     )
   ) {
@@ -344,7 +319,7 @@ function inferMarlowCategory(item) {
   }
 
   if (
-    /home|kitchen|bathroom|storage|lamp|lighting|decor|bedding|blanket|pillow|furniture|organizer|household|cookware|utensil/.test(
+    /home|kitchen|bathroom|storage|lamp|lighting|decor|bedding|blanket|pillow|furniture|household/.test(
       text
     )
   ) {
@@ -355,10 +330,12 @@ function inferMarlowCategory(item) {
 }
 
 function getSearchIntent(query) {
-  const q = String(query || "").toLowerCase();
+  const q = String(query || "")
+    .toLowerCase()
+    .trim();
 
   if (
-    /cheap|cheapest|low price|low priced|budget|affordable|inexpensive|under \$|under dollar/.test(
+    /cheap|cheapest|low price|low priced|budget|affordable|inexpensive/.test(
       q
     )
   ) {
@@ -374,7 +351,9 @@ function getSearchIntent(query) {
   }
 
   if (
-    /deal|deals|discount|sale|clearance|bargain|on sale/.test(q)
+    /deal|deals|discount|sale|clearance|bargain/.test(
+      q
+    )
   ) {
     return "deals";
   }
@@ -382,183 +361,105 @@ function getSearchIntent(query) {
   return "relevance";
 }
 
-function getSearchKeywords(query) {
-  const q = String(query || "").toLowerCase().trim();
+function normalizeSearchQuery(query) {
+  const original = String(query || "")
+    .toLowerCase()
+    .replace(/[’]/g, "'")
+    .trim();
 
-  if (!q) {
-    return [];
+  if (!original) {
+    return "popular products";
   }
 
-  const keywordMap = {
-    electronics: [
-      "electronics",
-      "phone",
-      "charger",
-      "cable",
-      "headphone",
-      "earbud",
-      "speaker",
-      "computer",
-      "laptop",
-      "tablet",
-      "watch",
-      "camera",
-      "keyboard",
-      "mouse",
-      "bluetooth",
-    ],
-
-    "phone accessories": [
-      "phone",
-      "iphone",
-      "android",
-      "charger",
-      "case",
-      "cable",
-      "screen protector",
-      "phone stand",
-      "phone holder",
-      "power bank",
-    ],
-
-    shoes: [
-      "shoe",
-      "shoes",
-      "sneaker",
-      "sneakers",
-      "boot",
-      "boots",
-      "sandal",
-      "sandals",
-      "footwear",
-      "slipper",
-    ],
-
-    clothing: [
-      "clothing",
-      "shirt",
-      "shirts",
-      "pants",
-      "jeans",
-      "dress",
-      "dresses",
-      "hoodie",
-      "jacket",
-      "coat",
-      "skirt",
-      "sweater",
-      "shoe",
-      "shoes",
-    ],
-
-    "womens clothing": [
-      "women",
-      "women's",
-      "dress",
-      "skirt",
-      "blouse",
-      "top",
-      "leggings",
-      "women shoes",
-      "fashion",
-    ],
-
-    "mens clothing": [
-      "men",
-      "men's",
-      "shirt",
-      "pants",
-      "jeans",
-      "hoodie",
-      "jacket",
-      "men shoes",
-      "fashion",
-    ],
-
-    beauty: [
-      "beauty",
-      "makeup",
-      "cosmetic",
-      "skincare",
-      "skin care",
-      "hair",
-      "shampoo",
-      "conditioner",
-      "grooming",
-      "nail",
-    ],
-
-    fitness: [
-      "fitness",
-      "gym",
-      "exercise",
-      "workout",
-      "sports",
-      "yoga",
-      "running",
-      "weights",
-      "camping",
-      "outdoor",
-    ],
-
-    travel: [
-      "travel",
-      "luggage",
-      "suitcase",
-      "backpack",
-      "travel bag",
-      "passport",
-      "organizer",
-    ],
-
-    kids: [
-      "kids",
-      "children",
-      "toy",
-      "toys",
-      "game",
-      "puzzle",
-      "doll",
-      "educational",
-    ],
-
-    home: [
-      "home",
-      "kitchen",
-      "bathroom",
-      "decor",
-      "storage",
-      "lighting",
-      "bedding",
-      "furniture",
-      "organizer",
-    ],
-
-    gifts: [
-      "gift",
-      "gifts",
-      "present",
-      "birthday",
-      "christmas",
-      "holiday",
-    ],
-  };
-
-  if (keywordMap[q]) {
-    return keywordMap[q];
+  if (
+    /women'?s clothing|womens clothing|women clothes|ladies clothing|ladies clothes/.test(
+      original
+    )
+  ) {
+    return "women clothing";
   }
 
-  return [q];
+  if (
+    /men'?s clothing|mens clothing|men clothes/.test(
+      original
+    )
+  ) {
+    return "men clothing";
+  }
+
+  if (
+    /\bkids\b|\bchildren\b|\bchildrens\b/.test(
+      original
+    )
+  ) {
+    if (/toy|game|play/.test(original)) {
+      return "kids toys";
+    }
+
+    return "kids products";
+  }
+
+  if (
+    /best sellers|best selling|bestsellers|top sellers/.test(
+      original
+    )
+  ) {
+    return "best selling products";
+  }
+
+  if (
+    /gifts|gift ideas|gift/.test(original)
+  ) {
+    return "gifts";
+  }
+
+  if (
+    /new arrivals|new products|new items/.test(
+      original
+    )
+  ) {
+    return "new products";
+  }
+
+  let cleaned = original;
+
+  cleaned = cleaned
+    .replace(
+      /\bcheapest\b|\bcheap\b|\blow price\b|\blow priced\b|\bbudget\b|\baffordable\b|\binexpensive\b/g,
+      " "
+    )
+    .replace(
+      /\bmost expensive\b|\bhighest price\b|\bhigh price\b|\bexpensive\b|\bpremium\b|\bluxury\b/g,
+      " "
+    )
+    .replace(
+      /\bdeals?\b|\bdiscounts?\b|\bsale\b|\bclearance\b|\bbargain\b/g,
+      " "
+    )
+    .replace(
+      /\bbest\b/g,
+      " "
+    )
+    .replace(
+      /\s+/g,
+      " "
+    )
+    .trim();
+
+  return cleaned || "popular products";
 }
 
-function productMatchesQuery(product, query) {
-  const q = String(query || "").toLowerCase().trim();
+function productMatchesQuery(
+  product,
+  query
+) {
+  const q = String(query || "")
+    .toLowerCase()
+    .trim();
 
   if (!q) {
     return true;
   }
-
-  const expanded = getSearchKeywords(q);
 
   const text = `
     ${product?.name || ""}
@@ -567,22 +468,110 @@ function productMatchesQuery(product, query) {
     ${product?.subcategory || ""}
   `.toLowerCase();
 
-  if (q.includes("shoe")) {
-    return /shoe|sneaker|boot|sandal|footwear|slipper/.test(text);
+  const words = q
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (words.length === 1) {
+    return text.includes(words[0]);
   }
 
-  if (q.includes("electronic")) {
-    return product.category === "Electronics";
-  }
-
-  return expanded.some((keyword) =>
-    text.includes(keyword.toLowerCase())
+  return words.some((word) =>
+    text.includes(word)
   );
 }
 
-function convertSupplierProduct(item, index = 0) {
-  const cost = getSupplierCost(item);
-  const category = inferMarlowCategory(item);
+function matchesSpecialSearch(
+  product,
+  query
+) {
+  const q = String(query || "")
+    .toLowerCase()
+    .trim();
+
+  const text = `
+    ${product?.name || ""}
+    ${product?.category || ""}
+    ${product?.description || ""}
+    ${product?.subcategory || ""}
+  `.toLowerCase();
+
+  if (
+    /\bshoes?\b|\bsneakers?\b|\bfootwear\b|\bboots?\b|\bsandals?\b/.test(
+      q
+    )
+  ) {
+    return /shoe|sneaker|boot|sandal|footwear|heel|slipper|loafer|flat/.test(
+      text
+    );
+  }
+
+  if (
+    /\belectronics?\b/.test(q)
+  ) {
+    return (
+      product?.category ===
+      "Electronics"
+    );
+  }
+
+  if (
+    /phone accessories/.test(q)
+  ) {
+    return /phone|iphone|android|charger|cable|case|screen protector|stand|holder|power bank|usb/.test(
+      text
+    );
+  }
+
+  return true;
+}
+
+function convertSupplierProduct(
+  item,
+  index = 0
+) {
+  const cost =
+    getSupplierCost(item);
+
+  const category =
+    inferMarlowCategory(item);
+
+  const originalSellPrice =
+    Number(item?.sellPrice || 0);
+
+  const originalNowPrice =
+    Number(item?.nowPrice || 0);
+
+  const originalDiscountPrice =
+    Number(
+      item?.discountPrice || 0
+    );
+
+  let discountPercent = 0;
+
+  if (
+    originalSellPrice > 0 &&
+    originalNowPrice > 0 &&
+    originalNowPrice <
+      originalSellPrice
+  ) {
+    discountPercent =
+      ((originalSellPrice -
+        originalNowPrice) /
+        originalSellPrice) *
+      100;
+  } else if (
+    originalSellPrice > 0 &&
+    originalDiscountPrice > 0 &&
+    originalDiscountPrice <
+      originalSellPrice
+  ) {
+    discountPercent =
+      ((originalSellPrice -
+        originalDiscountPrice) /
+        originalSellPrice) *
+      100;
+  }
 
   return {
     id:
@@ -592,13 +581,16 @@ function convertSupplierProduct(item, index = 0) {
       item?.sku ||
       `live-${Date.now()}-${index}`,
 
-    name: getSupplierName(item),
+    name:
+      getSupplierName(item),
 
-    price: calculateMarlowPrice(cost),
+    price:
+      calculateMarlowPrice(cost),
 
     cost,
 
-    image: getSupplierImage(item),
+    image:
+      getSupplierImage(item),
 
     category,
 
@@ -609,11 +601,11 @@ function convertSupplierProduct(item, index = 0) {
       "",
 
     description:
-      typeof item?.description === "string"
-        ? item.description.replace(/<[^>]*>/g, "").trim()
-        : "A great product selected for the Marlow collection.",
+      item?.description ||
+      "A great product selected for the Marlow collection.",
 
-    sku: item?.sku || "",
+    sku:
+      item?.sku || "",
 
     sourceId:
       item?.id ||
@@ -621,40 +613,203 @@ function convertSupplierProduct(item, index = 0) {
       "",
 
     discountPrice:
-      item?.discountPrice ||
-      item?.nowPrice ||
-      0,
+      originalDiscountPrice,
+
+    discountPercent,
+
+    listedNum:
+      Number(item?.listedNum || 0),
+
+    inventory:
+      Number(
+        item?.warehouseInventoryNum ||
+          item?.totalVerifiedInventory ||
+          0
+      ),
   };
 }
 
-function sortProducts(products, intent) {
+function sortProducts(
+  products,
+  intent
+) {
   const copy = [...products];
 
   if (intent === "cheap") {
-    return copy.sort((a, b) => a.price - b.price);
+    return copy.sort(
+      (a, b) =>
+        a.price - b.price
+    );
   }
 
   if (intent === "expensive") {
-    return copy.sort((a, b) => b.price - a.price);
+    return copy.sort(
+      (a, b) =>
+        b.price - a.price
+    );
   }
 
   if (intent === "deals") {
-    return copy.sort((a, b) => {
-      const aDiscount = Number(a?.discountPrice || 0);
-      const bDiscount = Number(b?.discountPrice || 0);
+    return copy.sort(
+      (a, b) => {
+        const discountDifference =
+          Number(
+            b?.discountPercent || 0
+          ) -
+          Number(
+            a?.discountPercent || 0
+          );
 
-      return bDiscount - aDiscount;
-    });
+        if (
+          discountDifference !== 0
+        ) {
+          return discountDifference;
+        }
+
+        return (
+          Number(
+            b?.listedNum || 0
+          ) -
+          Number(
+            a?.listedNum || 0
+          )
+        );
+      }
+    );
   }
 
   return copy;
 }
 
-function ProductCard({ product, onOpen }) {
+function diversifyProducts(
+  products,
+  limit = HOME_PRODUCT_LIMIT
+) {
+  const categoryNames =
+    categories.filter(
+      (item) => item !== "All"
+    );
+
+  const groups = new Map();
+
+  categoryNames.forEach(
+    (category) => {
+      groups.set(
+        category,
+        []
+      );
+    }
+  );
+
+  const leftovers = [];
+
+  products.forEach(
+    (product) => {
+      if (
+        groups.has(
+          product.category
+        )
+      ) {
+        groups
+          .get(product.category)
+          .push(product);
+      } else {
+        leftovers.push(product);
+      }
+    }
+  );
+
+  const result = [];
+  const positions = new Map();
+
+  categoryNames.forEach(
+    (category) => {
+      positions.set(
+        category,
+        0
+      );
+    }
+  );
+
+  let madeProgress = true;
+
+  while (
+    result.length < limit &&
+    madeProgress
+  ) {
+    madeProgress = false;
+
+    for (const category of categoryNames) {
+      const list =
+        groups.get(category) ||
+        [];
+
+      const position =
+        positions.get(
+          category
+        ) || 0;
+
+      if (
+        position <
+        list.length
+      ) {
+        result.push(
+          list[position]
+        );
+
+        positions.set(
+          category,
+          position + 1
+        );
+
+        madeProgress = true;
+      }
+
+      if (
+        result.length >=
+        limit
+      ) {
+        break;
+      }
+    }
+  }
+
+  for (
+    const product of leftovers
+  ) {
+    if (
+      result.length >= limit
+    ) {
+      break;
+    }
+
+    if (
+      !result.some(
+        (item) =>
+          item.id ===
+          product.id
+      )
+    ) {
+      result.push(product);
+    }
+  }
+
+  return result.slice(
+    0,
+    limit
+  );
+}
+
+function ProductCard({
+  product,
+  onOpen,
+}) {
   return (
     <button
       className="product-card"
-      onClick={() => onOpen(product)}
+      onClick={() =>
+        onOpen(product)
+      }
       type="button"
     >
       <div className="product-image-wrap">
@@ -663,9 +818,12 @@ function ProductCard({ product, onOpen }) {
             src={product.image}
             alt={product.name}
             className="product-image"
+            loading="lazy"
           />
         ) : (
-          <div className="image-placeholder">M</div>
+          <div className="image-placeholder">
+            M
+          </div>
         )}
       </div>
 
@@ -674,16 +832,25 @@ function ProductCard({ product, onOpen }) {
           {product.category}
         </div>
 
-        <h3>{product.name}</h3>
+        <h3>
+          {product.name}
+        </h3>
 
-        <p>{product.description}</p>
+        <p>
+          {product.description}
+        </p>
 
         <div className="product-bottom">
           <strong>
-            ${Number(product.price || 0).toFixed(2)}
+            $
+            {Number(
+              product.price || 0
+            ).toFixed(2)}
           </strong>
 
-          <span className="view-product">View</span>
+          <span className="view-product">
+            View
+          </span>
         </div>
       </div>
     </button>
@@ -701,11 +868,15 @@ function ProductSection({
     <section className="product-section">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">MARLOW COLLECTION</p>
+          <p className="eyebrow">
+            MARLOW COLLECTION
+          </p>
+
           <h2>{title}</h2>
         </div>
 
-        {products.length > 0 && onSeeAll ? (
+        {products.length > 0 &&
+        onSeeAll ? (
           <button
             className="see-all"
             type="button"
@@ -718,13 +889,15 @@ function ProductSection({
 
       {products.length > 0 ? (
         <div className="product-grid">
-          {products.map((product) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              onOpen={onOpen}
-            />
-          ))}
+          {products.map(
+            (product) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                onOpen={onOpen}
+              />
+            )
+          )}
         </div>
       ) : (
         <div className="empty-section">
@@ -736,353 +909,468 @@ function ProductSection({
 }
 
 export default function Home() {
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("All");
-
-  const [product, setProduct] = useState(null);
-  const [cartOpen, setCartOpen] = useState(false);
-  const [cart, setCart] = useState([]);
-
-  const [supplierProducts, setSupplierProducts] = useState([]);
-  const [homeProducts, setHomeProducts] = useState([]);
-
-  const [searchingSupplier, setSearchingSupplier] =
-    useState(false);
-
-  const [loadingHomeProducts, setLoadingHomeProducts] =
-    useState(false);
-
-  const [supplierError, setSupplierError] =
+  const [search, setSearch] =
     useState("");
 
-  const [homeError, setHomeError] = useState("");
+  const [category, setCategory] =
+    useState("All");
 
-  const [hasSearched, setHasSearched] = useState(false);
+  const [product, setProduct] =
+    useState(null);
 
-  const [searchQuery, setSearchQuery] = useState("");
-
-  const [loadingCategory, setLoadingCategory] =
+  const [cartOpen, setCartOpen] =
     useState(false);
 
-  const [categoryProducts, setCategoryProducts] =
+  const [cart, setCart] =
     useState([]);
 
-  const [searchPage, setSearchPage] = useState(1);
+  const [
+    supplierProducts,
+    setSupplierProducts,
+  ] = useState([]);
 
-  const [canLoadMore, setCanLoadMore] =
-    useState(false);
+  const [
+    homeProducts,
+    setHomeProducts,
+  ] = useState([]);
 
-  const [loadingMore, setLoadingMore] =
-    useState(false);
+  const [
+    searchingSupplier,
+    setSearchingSupplier,
+  ] = useState(false);
 
-  const cartCount = cart.reduce(
-    (sum, item) => sum + item.quantity,
-    0
-  );
+  const [
+    loadingHomeProducts,
+    setLoadingHomeProducts,
+  ] = useState(false);
 
-  const cartTotal = cart.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  );
+  const [
+    supplierError,
+    setSupplierError,
+  ] = useState("");
 
-  async function fetchProducts(query, page = 1) {
-    const response = await fetch(
-      `/api/search?q=${encodeURIComponent(
-        query
-      )}&page=${page}&size=100`,
-      {
-        cache: "no-store",
-      }
+  const [
+    homeError,
+    setHomeError,
+  ] = useState("");
+
+  const [
+    hasSearched,
+    setHasSearched,
+  ] = useState(false);
+
+  const [
+    searchQuery,
+    setSearchQuery,
+  ] = useState("");
+
+  const [
+    loadingCategory,
+    setLoadingCategory,
+  ] = useState(false);
+
+  const [
+    categoryProducts,
+    setCategoryProducts,
+  ] = useState([]);
+
+  const [
+    searchPage,
+    setSearchPage,
+  ] = useState(1);
+
+  const [
+    canLoadMore,
+    setCanLoadMore,
+  ] = useState(false);
+
+  const [
+    loadingMore,
+    setLoadingMore,
+  ] = useState(false);
+
+  const categoryRequest =
+    useRef(0);
+
+  const searchRequest =
+    useRef(0);
+
+  const cartCount =
+    cart.reduce(
+      (sum, item) =>
+        sum + item.quantity,
+      0
     );
 
-    if (!response.ok) {
-      throw new Error("Product search failed.");
-    }
-
-    const data = await response.json();
-
-    return {
-      products: Array.isArray(data?.products)
-        ? data.products
-        : [],
-      totalRecords: Number(data?.totalRecords || 0),
-    };
-  }
+  const cartTotal =
+    cart.reduce(
+      (sum, item) =>
+        sum +
+        item.price *
+          item.quantity,
+      0
+    );
 
   async function searchSupplierCatalog(
     query,
     page = 1,
     append = false
   ) {
-    const cleanQuery = String(query || "").trim();
+    const cleanQuery =
+      String(query || "").trim();
 
     if (!cleanQuery) {
       return;
     }
 
+    const requestId =
+      ++searchRequest.current;
+
+    const apiQuery =
+      normalizeSearchQuery(
+        cleanQuery
+      );
+
     if (append) {
       setLoadingMore(true);
     } else {
-      setSearchingSupplier(true);
+      setSearchingSupplier(
+        true
+      );
       setSupplierError("");
       setHasSearched(false);
     }
 
     try {
-      const result = await fetchProducts(
-        cleanQuery,
+      const response =
+        await fetch(
+          `/api/search?q=${encodeURIComponent(
+            apiQuery
+          )}&page=${page}&size=100`,
+          {
+            cache:
+              "no-store",
+          }
+        );
+
+      const data =
+        await response.json();
+
+      if (
+        requestId !==
+        searchRequest.current
+      ) {
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          data?.message ||
+            "Search failed."
+        );
+      }
+
+      const intent =
+        getSearchIntent(
+          cleanQuery
+        );
+
+      let finalProducts =
+        (data?.products || [])
+          .map(
+            (item, index) =>
+              convertSupplierProduct(
+                item,
+                index
+              )
+          )
+          .filter(
+            (item) =>
+              item.name &&
+              item.price > 0 &&
+              item.id
+          );
+
+      finalProducts =
+        finalProducts.filter(
+          (item) =>
+            matchesSpecialSearch(
+              item,
+              cleanQuery
+            )
+        );
+
+      finalProducts =
+        sortProducts(
+          finalProducts,
+          intent
+        );
+
+      if (append) {
+        setSupplierProducts(
+          (current) => {
+            const map =
+              new Map(
+                current.map(
+                  (item) => [
+                    item.id,
+                    item,
+                  ]
+                )
+              );
+
+            finalProducts.forEach(
+              (item) => {
+                if (
+                  !map.has(
+                    item.id
+                  )
+                ) {
+                  map.set(
+                    item.id,
+                    item
+                  );
+                }
+              }
+            );
+
+            return sortProducts(
+              Array.from(
+                map.values()
+              ),
+              intent
+            );
+          }
+        );
+      } else {
+        setSupplierProducts(
+          finalProducts
+        );
+      }
+
+      setSearchPage(
         page
       );
 
-      let converted = result.products
-        .map((item, index) =>
-          convertSupplierProduct(item, index)
-        )
-        .filter(
-          (item) =>
-            item.name &&
-            item.price > 0 &&
-            item.id
-        );
-
-      const intent = getSearchIntent(cleanQuery);
-
-      const lowered = cleanQuery.toLowerCase();
-
-      if (
-        lowered.includes("shoe") ||
-        lowered.includes("sneaker") ||
-        lowered.includes("footwear")
-      ) {
-        converted = converted.filter((item) =>
-          /shoe|sneaker|boot|sandal|footwear|slipper/i.test(
-            `${item.name} ${item.description} ${item.subcategory}`
-          )
-        );
-      }
-
-      if (
-        lowered.includes("electronics") ||
-        lowered === "electronic"
-      ) {
-        converted = converted.filter(
-          (item) =>
-            item.category === "Electronics"
-        );
-      }
-
-      if (
-        lowered.includes("beauty")
-      ) {
-        converted = converted.filter(
-          (item) =>
-            item.category === "Beauty"
-        );
-      }
-
-      if (
-        lowered.includes("travel")
-      ) {
-        converted = converted.filter(
-          (item) =>
-            item.category === "Travel"
-        );
-      }
-
-      if (
-        lowered.includes("sports") ||
-        lowered.includes("fitness")
-      ) {
-        converted = converted.filter(
-          (item) =>
-            item.category === "Sports"
-        );
-      }
-
-      if (
-        lowered.includes("toys") ||
-        lowered.includes("kids")
-      ) {
-        converted = converted.filter(
-          (item) =>
-            item.category === "Toys"
-        );
-      }
-
-      if (
-        lowered.includes("tools") ||
-        lowered.includes("tool")
-      ) {
-        converted = converted.filter(
-          (item) =>
-            item.category === "Tools"
-        );
-      }
-
-      if (
-        lowered.includes("home") ||
-        lowered.includes("kitchen")
-      ) {
-        converted = converted.filter(
-          (item) =>
-            item.category === "Home"
-        );
-      }
-
-      if (
-        lowered.includes("clothing") ||
-        lowered.includes("clothes") ||
-        lowered.includes("shirt") ||
-        lowered.includes("pants") ||
-        lowered.includes("dress")
-      ) {
-        converted = converted.filter(
-          (item) =>
-            item.category === "Clothing"
-        );
-      }
-
-      if (lowered.includes("cheap")) {
-        converted = converted.filter(
-          (item) => item.price > 0
-        );
-      }
-
-      converted = sortProducts(
-        converted,
-        intent
-      );
-
-      if (append) {
-        setSupplierProducts((current) => {
-          const map = new Map(
-            current.map((item) => [
-              item.id,
-              item,
-            ])
-          );
-
-          converted.forEach((item) => {
-            if (!map.has(item.id)) {
-              map.set(item.id, item);
-            }
-          });
-
-          return sortProducts(
-            Array.from(map.values()),
-            intent
-          );
-        });
-      } else {
-        setSupplierProducts(converted);
-      }
-
-      setSearchPage(page);
-
       setCanLoadMore(
-        result.totalRecords > page * 100
+        Boolean(
+          data?.hasMore ??
+            Number(
+              data?.totalRecords ||
+                0
+            ) >
+              page * 100
+        )
       );
 
-      setHasSearched(true);
+      setHasSearched(
+        true
+      );
     } catch (error) {
       console.error(error);
 
+      if (
+        requestId !==
+        searchRequest.current
+      ) {
+        return;
+      }
+
       if (!append) {
-        setSupplierProducts([]);
+        setSupplierProducts(
+          []
+        );
       }
 
       setSupplierError(
         "We couldn't load those products right now. Please try again."
       );
 
-      setHasSearched(true);
+      setHasSearched(
+        true
+      );
     } finally {
-      setSearchingSupplier(false);
-      setLoadingMore(false);
+      if (
+        requestId ===
+        searchRequest.current
+      ) {
+        setSearchingSupplier(
+          false
+        );
+        setLoadingMore(
+          false
+        );
+      }
     }
   }
 
   async function loadHomeProducts() {
-    setLoadingHomeProducts(true);
+    setLoadingHomeProducts(
+      true
+    );
+
     setHomeError("");
+
+    /*
+      Multiple targeted searches give
+      Marlow a much wider and more
+      varied collection than searching
+      one generic keyword.
+    */
 
     const homeSearches = [
       "electronics",
       "phone accessories",
-      "headphones",
-      "smart watch",
       "home kitchen",
       "home decor",
-      "storage",
-      "lighting",
       "clothing",
       "shoes",
-      "beauty",
-      "skincare",
+      "beauty skincare",
       "fitness sports",
-      "toys",
-      "travel",
-      "luggage",
+      "toys kids",
+      "travel luggage",
       "tools",
     ];
 
     try {
-      const results = await Promise.all(
-        homeSearches.map(async (query) => {
-          try {
-            const result =
-              await fetchProducts(query, 1);
+      const results =
+        await Promise.all(
+          homeSearches.map(
+            async (query) => {
+              try {
+                const response =
+                  await fetch(
+                    `/api/search?q=${encodeURIComponent(
+                      query
+                    )}&page=1&size=100`,
+                    {
+                      cache:
+                        "no-store",
+                    }
+                  );
 
-            return result.products.map(
-              (item, index) =>
-                convertSupplierProduct(
-                  item,
-                  index
+                if (
+                  !response.ok
+                ) {
+                  return [];
+                }
+
+                const data =
+                  await response.json();
+
+                return (
+                  data?.products ||
+                  []
                 )
-            );
-          } catch {
-            return [];
+                  .map(
+                    (
+                      item,
+                      index
+                    ) =>
+                      convertSupplierProduct(
+                        item,
+                        index
+                      )
+                  )
+                  .filter(
+                    (item) =>
+                      item?.id &&
+                      item?.name &&
+                      item?.price >
+                        0
+                  );
+              } catch {
+                return [];
+              }
+            }
+          )
+        );
+
+      const map =
+        new Map();
+
+      results
+        .flat()
+        .forEach(
+          (item) => {
+            if (
+              item?.id &&
+              item?.name &&
+              item?.price >
+                0 &&
+              !map.has(
+                item.id
+              )
+            ) {
+              map.set(
+                item.id,
+                item
+              );
+            }
           }
-        })
-      );
-
-      const map = new Map();
-
-      results.flat().forEach((item) => {
-        if (
-          item?.id &&
-          item?.name &&
-          item?.price > 0 &&
-          !map.has(item.id)
-        ) {
-          map.set(item.id, item);
-        }
-      });
+        );
 
       const liveProducts =
-        Array.from(map.values());
+        Array.from(
+          map.values()
+        );
 
-      const combined = [...liveProducts];
+      /*
+        Spread products across
+        categories so the home page
+        doesn't become dominated by
+        one type of product.
+      */
 
-      for (const demo of demoProducts) {
-        if (combined.length >= 150) {
+      const diverseProducts =
+        diversifyProducts(
+          liveProducts,
+          HOME_PRODUCT_LIMIT
+        );
+
+      const combined = [
+        ...diverseProducts,
+      ];
+
+      /*
+        Demo products are only used
+        as a small fallback. They do
+        not replace live catalog items.
+      */
+
+      for (
+        const demo of demoProducts
+      ) {
+        if (
+          combined.length >=
+          HOME_PRODUCT_LIMIT
+        ) {
           break;
         }
 
         if (
           !combined.some(
-            (item) => item.id === demo.id
+            (item) =>
+              item.id ===
+              demo.id
           )
         ) {
-          combined.push(demo);
+          combined.push(
+            demo
+          );
         }
       }
 
       setHomeProducts(
-        combined.slice(0, 150)
+        combined.slice(
+          0,
+          HOME_PRODUCT_LIMIT
+        )
       );
 
-      if (liveProducts.length === 0) {
+      if (
+        liveProducts.length === 0
+      ) {
         setHomeError(
           "Live products are temporarily unavailable. Showing Marlow's featured collection."
         );
@@ -1090,71 +1378,160 @@ export default function Home() {
     } catch (error) {
       console.error(error);
 
-      setHomeProducts(demoProducts);
+      setHomeProducts(
+        demoProducts
+      );
 
       setHomeError(
         "Live products are temporarily unavailable. Showing Marlow's featured collection."
       );
     } finally {
-      setLoadingHomeProducts(false);
+      setLoadingHomeProducts(
+        false
+      );
     }
   }
 
   async function loadCategoryProducts(
     selectedCategory
   ) {
-    if (selectedCategory === "All") {
-      setCategoryProducts([]);
+    if (
+      selectedCategory ===
+      "All"
+    ) {
+      setCategoryProducts(
+        []
+      );
+      return;
+    }
+
+    const requestId =
+      ++categoryRequest.current;
+
+    /*
+      First use products already
+      loaded on the home page.
+      This avoids unnecessary
+      catalog requests.
+    */
+
+    const existingHomeProducts =
+      homeProducts.filter(
+        (item) =>
+          item.category ===
+          selectedCategory
+      );
+
+    if (
+      existingHomeProducts.length >=
+      24
+    ) {
+      setCategoryProducts(
+        existingHomeProducts
+      );
+
       return;
     }
 
     const searches =
-      categorySearches[selectedCategory] || [
+      categorySearches[
+        selectedCategory
+      ] || [
         selectedCategory,
       ];
 
-    setLoadingCategory(true);
+    setLoadingCategory(
+      true
+    );
+
     setSupplierError("");
 
     try {
-      const results = await Promise.all(
-        searches.map(async (query) => {
-          try {
-            const result =
-              await fetchProducts(query, 1);
+      const results =
+        await Promise.all(
+          searches.map(
+            async (query) => {
+              try {
+                const response =
+                  await fetch(
+                    `/api/search?q=${encodeURIComponent(
+                      query
+                    )}&page=1&size=100`,
+                    {
+                      cache:
+                        "no-store",
+                    }
+                  );
 
-            return result.products.map(
-              (item, index) =>
-                convertSupplierProduct(
-                  item,
-                  index
-                )
-            );
-          } catch {
-            return [];
+                if (
+                  !response.ok
+                ) {
+                  return [];
+                }
+
+                const data =
+                  await response.json();
+
+                return (
+                  data?.products ||
+                  []
+                ).map(
+                  (
+                    item,
+                    index
+                  ) =>
+                    convertSupplierProduct(
+                      item,
+                      index
+                    )
+                );
+              } catch {
+                return [];
+              }
+            }
+          )
+        );
+
+      if (
+        requestId !==
+        categoryRequest.current
+      ) {
+        return;
+      }
+
+      const map =
+        new Map();
+
+      results
+        .flat()
+        .forEach(
+          (item) => {
+            if (
+              item?.id &&
+              item?.name &&
+              item?.price > 0 &&
+              item.category ===
+                selectedCategory &&
+              !map.has(
+                item.id
+              )
+            ) {
+              map.set(
+                item.id,
+                item
+              );
+            }
           }
-        })
-      );
-
-      const map = new Map();
-
-      results.flat().forEach((item) => {
-        if (
-          item?.id &&
-          item?.name &&
-          item?.price > 0 &&
-          item.category ===
-            selectedCategory &&
-          !map.has(item.id)
-        ) {
-          map.set(item.id, item);
-        }
-      });
+        );
 
       let products =
-        Array.from(map.values());
+        Array.from(
+          map.values()
+        );
 
-      if (products.length === 0) {
+      if (
+        products.length === 0
+      ) {
         products =
           demoProducts.filter(
             (item) =>
@@ -1163,9 +1540,21 @@ export default function Home() {
           );
       }
 
-      setCategoryProducts(products);
+      setCategoryProducts(
+        products.slice(
+          0,
+          HOME_PRODUCT_LIMIT
+        )
+      );
     } catch (error) {
       console.error(error);
+
+      if (
+        requestId !==
+        categoryRequest.current
+      ) {
+        return;
+      }
 
       setCategoryProducts(
         demoProducts.filter(
@@ -1175,7 +1564,14 @@ export default function Home() {
         )
       );
     } finally {
-      setLoadingCategory(false);
+      if (
+        requestId ===
+        categoryRequest.current
+      ) {
+        setLoadingCategory(
+          false
+        );
+      }
     }
   }
 
@@ -1184,14 +1580,23 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (category !== "All") {
-      loadCategoryProducts(category);
+    if (
+      category !==
+      "All"
+    ) {
+      loadCategoryProducts(
+        category
+      );
     } else {
-      setCategoryProducts([]);
+      setCategoryProducts(
+        []
+      );
     }
   }, [category]);
 
-  function handleSearchSubmit(event) {
+  function handleSearchSubmit(
+    event
+  ) {
     event?.preventDefault();
 
     const cleanQuery =
@@ -1201,10 +1606,21 @@ export default function Home() {
       return;
     }
 
-    setCategory("All");
-    setSearchQuery(cleanQuery);
-    setSearchPage(1);
-    setCanLoadMore(false);
+    setCategory(
+      "All"
+    );
+
+    setSearchQuery(
+      cleanQuery
+    );
+
+    setSearchPage(
+      1
+    );
+
+    setCanLoadMore(
+      false
+    );
 
     searchSupplierCatalog(
       cleanQuery,
@@ -1213,24 +1629,56 @@ export default function Home() {
     );
   }
 
-  function handleSearchChange(event) {
-    setSearch(event.target.value);
+  function handleSearchChange(
+    event
+  ) {
+    setSearch(
+      event.target.value
+    );
   }
 
   function handleCategoryClick(
     selectedCategory
   ) {
-    setCategory(selectedCategory);
+    setCategory(
+      selectedCategory
+    );
+
     setSearch("");
 
-    if (selectedCategory === "All") {
-      setSearchQuery("");
-      setHasSearched(false);
-      setSupplierProducts([]);
+    if (
+      selectedCategory ===
+      "All"
+    ) {
+      setSearchQuery(
+        ""
+      );
+
+      setHasSearched(
+        false
+      );
+
+      setSupplierProducts(
+        []
+      );
     } else {
-      setHasSearched(false);
-      setSupplierProducts([]);
+      setHasSearched(
+        false
+      );
+
+      setSearchQuery(
+        ""
+      );
+
+      setSupplierProducts(
+        []
+      );
     }
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
   }
 
   function loadMoreSearchResults() {
@@ -1249,92 +1697,132 @@ export default function Home() {
     );
   }
 
-  function openProduct(item) {
+  function openProduct(
+    item
+  ) {
     setProduct(item);
   }
 
-  function addToCart(item) {
-    setCart((current) => {
-      const existing =
-        current.find(
-          (cartItem) =>
-            cartItem.id === item.id
-        );
+  function addToCart(
+    item
+  ) {
+    setCart(
+      (current) => {
+        const existing =
+          current.find(
+            (cartItem) =>
+              cartItem.id ===
+              item.id
+          );
 
-      if (existing) {
-        return current.map(
-          (cartItem) =>
-            cartItem.id === item.id
-              ? {
-                  ...cartItem,
-                  quantity:
-                    cartItem.quantity + 1,
-                }
-              : cartItem
-        );
+        if (existing) {
+          return current.map(
+            (cartItem) =>
+              cartItem.id ===
+              item.id
+                ? {
+                    ...cartItem,
+                    quantity:
+                      cartItem.quantity +
+                      1,
+                  }
+                : cartItem
+          );
+        }
+
+        return [
+          ...current,
+          {
+            ...item,
+            quantity: 1,
+          },
+        ];
       }
+    );
 
-      return [
-        ...current,
-        {
-          ...item,
-          quantity: 1,
-        },
-      ];
-    });
+    setProduct(
+      null
+    );
 
-    setProduct(null);
-    setCartOpen(true);
-  }
-
-  function increaseQuantity(id) {
-    setCart((current) =>
-      current.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              quantity:
-                item.quantity + 1,
-            }
-          : item
-      )
+    setCartOpen(
+      true
     );
   }
 
-  function decreaseQuantity(id) {
-    setCart((current) =>
-      current
-        .map((item) =>
-          item.id === id
-            ? {
-                ...item,
-                quantity:
-                  item.quantity - 1,
-              }
-            : item
-        )
-        .filter(
+  function increaseQuantity(
+    id
+  ) {
+    setCart(
+      (current) =>
+        current.map(
           (item) =>
-            item.quantity > 0
+            item.id === id
+              ? {
+                  ...item,
+                  quantity:
+                    item.quantity +
+                    1,
+                }
+              : item
         )
     );
   }
 
-  function removeFromCart(id) {
-    setCart((current) =>
-      current.filter(
-        (item) =>
-          item.id !== id
-      )
+  function decreaseQuantity(
+    id
+  ) {
+    setCart(
+      (current) =>
+        current
+          .map(
+            (item) =>
+              item.id === id
+                ? {
+                    ...item,
+                    quantity:
+                      item.quantity -
+                      1,
+                  }
+                : item
+          )
+          .filter(
+            (item) =>
+              item.quantity >
+              0
+          )
+    );
+  }
+
+  function removeFromCart(
+    id
+  ) {
+    setCart(
+      (current) =>
+        current.filter(
+          (item) =>
+            item.id !== id
+        )
     );
   }
 
   function showHome() {
-    setCategory("All");
+    setCategory(
+      "All"
+    );
+
     setSearch("");
-    setSearchQuery("");
-    setSupplierProducts([]);
-    setHasSearched(false);
+
+    setSearchQuery(
+      ""
+    );
+
+    setSupplierProducts(
+      []
+    );
+
+    setHasSearched(
+      false
+    );
 
     window.scrollTo({
       top: 0,
@@ -1344,7 +1832,10 @@ export default function Home() {
 
   const visibleProducts =
     useMemo(() => {
-      if (category !== "All") {
+      if (
+        category !==
+        "All"
+      ) {
         return categoryProducts;
       }
 
@@ -1362,10 +1853,16 @@ export default function Home() {
     ]);
 
   const featuredProducts =
-    homeProducts.slice(0, 8);
+    homeProducts.slice(
+      0,
+      8
+    );
 
   const trendingProducts =
-    homeProducts.slice(8, 16);
+    homeProducts.slice(
+      8,
+      16
+    );
 
   const electronicsProducts =
     homeProducts
@@ -1374,7 +1871,10 @@ export default function Home() {
           item.category ===
           "Electronics"
       )
-      .slice(0, 8);
+      .slice(
+        0,
+        8
+      );
 
   const homeKitchenProducts =
     homeProducts
@@ -1383,22 +1883,51 @@ export default function Home() {
           item.category ===
           "Home"
       )
-      .slice(0, 8);
+      .slice(
+        0,
+        8
+      );
 
   const dealProducts =
     [...homeProducts]
       .sort(
-        (a, b) =>
-          a.price - b.price
+        (a, b) => {
+          const discountDifference =
+            Number(
+              b?.discountPercent ||
+                0
+            ) -
+            Number(
+              a?.discountPercent ||
+                0
+            );
+
+          if (
+            discountDifference !==
+            0
+          ) {
+            return discountDifference;
+          }
+
+          return (
+            a.price -
+            b.price
+          );
+        }
       )
-      .slice(0, 8);
+      .slice(
+        0,
+        8
+      );
 
   const showSearchResults =
     hasSearched &&
-    category === "All";
+    category ===
+      "All";
 
   const showCategoryResults =
-    category !== "All";
+    category !==
+    "All";
 
   return (
     <main>
@@ -1451,12 +1980,7 @@ export default function Home() {
           position: sticky;
           top: 0;
           z-index: 30;
-          background: rgba(
-            247,
-            245,
-            240,
-            0.96
-          );
+          background: rgba(247, 245, 240, 0.96);
           backdrop-filter: blur(12px);
           border-bottom: 1px solid #e5e0d6;
         }
@@ -1616,11 +2140,7 @@ export default function Home() {
 
         .hero h1 {
           margin: 0;
-          font-size: clamp(
-            42px,
-            6vw,
-            76px
-          );
+          font-size: clamp(42px, 6vw, 76px);
           line-height: 0.94;
           letter-spacing: -0.065em;
         }
@@ -1649,12 +2169,7 @@ export default function Home() {
           width: 480px;
           height: 480px;
           border-radius: 50%;
-          background: rgba(
-            255,
-            255,
-            255,
-            0.35
-          );
+          background: rgba(255, 255, 255, 0.35);
         }
 
         .content {
@@ -1691,10 +2206,7 @@ export default function Home() {
 
         .product-grid {
           display: grid;
-          grid-template-columns: repeat(
-            4,
-            minmax(0, 1fr)
-          );
+          grid-template-columns: repeat(4, minmax(0, 1fr));
           gap: 16px;
         }
 
@@ -1712,14 +2224,7 @@ export default function Home() {
 
         .product-card:hover {
           transform: translateY(-3px);
-          box-shadow:
-            0 12px 35px
-              rgba(
-                20,
-                20,
-                20,
-                0.09
-              );
+          box-shadow: 0 12px 35px rgba(20, 20, 20, 0.09);
         }
 
         .product-image-wrap {
@@ -1825,6 +2330,11 @@ export default function Home() {
           font-weight: 900;
         }
 
+        .load-more-button:disabled {
+          opacity: 0.6;
+          cursor: wait;
+        }
+
         .footer {
           background: #171717;
           color: white;
@@ -1858,12 +2368,7 @@ export default function Home() {
         .overlay {
           position: fixed;
           inset: 0;
-          background: rgba(
-            0,
-            0,
-            0,
-            0.48
-          );
+          background: rgba(0, 0, 0, 0.48);
           z-index: 80;
           display: flex;
           align-items: center;
@@ -1872,10 +2377,7 @@ export default function Home() {
         }
 
         .modal {
-          width: min(
-            850px,
-            100%
-          );
+          width: min(850px, 100%);
           max-height: 90vh;
           overflow-y: auto;
           background: white;
@@ -1951,10 +2453,7 @@ export default function Home() {
         .cart-drawer {
           margin-left: auto;
           height: 100%;
-          width: min(
-            470px,
-            100%
-          );
+          width: min(470px, 100%);
           background: white;
           padding: 25px;
           overflow-y: auto;
@@ -1981,12 +2480,10 @@ export default function Home() {
 
         .cart-item {
           display: grid;
-          grid-template-columns:
-            75px 1fr auto;
+          grid-template-columns: 75px 1fr auto;
           gap: 12px;
           padding: 14px 0;
-          border-bottom: 1px solid
-            #eeeae2;
+          border-bottom: 1px solid #eeeae2;
         }
 
         .cart-item img {
@@ -2057,10 +2554,7 @@ export default function Home() {
 
         @media (max-width: 1000px) {
           .product-grid {
-            grid-template-columns: repeat(
-              3,
-              minmax(0, 1fr)
-            );
+            grid-template-columns: repeat(3, minmax(0, 1fr));
           }
 
           .header-inner {
@@ -2094,10 +2588,7 @@ export default function Home() {
           }
 
           .product-grid {
-            grid-template-columns: repeat(
-              2,
-              minmax(0, 1fr)
-            );
+            grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 11px;
           }
 
@@ -2203,12 +2694,15 @@ export default function Home() {
                 className="cart-button"
                 type="button"
                 onClick={() =>
-                  setCartOpen(true)
+                  setCartOpen(
+                    true
+                  )
                 }
               >
                 Cart
 
-                {cartCount > 0 ? (
+                {cartCount >
+                0 ? (
                   <span className="cart-count">
                     {cartCount}
                   </span>
@@ -2265,8 +2759,7 @@ export default function Home() {
                   clothing, beauty,
                   sports, toys, travel
                   products, tools, and
-                  more—all in one
-                  place.
+                  more—all in one place.
                 </p>
 
                 <button
@@ -2277,10 +2770,12 @@ export default function Home() {
                       .getElementById(
                         "featured"
                       )
-                      ?.scrollIntoView({
-                        behavior:
-                          "smooth",
-                      })
+                      ?.scrollIntoView(
+                        {
+                          behavior:
+                            "smooth",
+                        }
+                      )
                   }
                 >
                   Shop the collection
@@ -2381,8 +2876,8 @@ export default function Home() {
 
               {loadingCategory ? (
                 <div className="loading-box">
-                  Finding products in{" "}
-                  {category}...
+                  Finding products
+                  in {category}...
                 </div>
               ) : categoryProducts.length >
                 0 ? (
@@ -2442,10 +2937,9 @@ export default function Home() {
                   onSeeAll={() =>
                     window.scrollTo(
                       {
-                        top:
-                          document
-                            .body
-                            .scrollHeight,
+                        top: document
+                          .body
+                          .scrollHeight,
                         behavior:
                           "smooth",
                       }
@@ -2467,10 +2961,12 @@ export default function Home() {
                     .getElementById(
                       "featured"
                     )
-                    ?.scrollIntoView({
-                      behavior:
-                        "smooth",
-                    })
+                    ?.scrollIntoView(
+                      {
+                        behavior:
+                          "smooth",
+                      }
+                    )
                 }
               />
 
@@ -2513,6 +3009,28 @@ export default function Home() {
                   openProduct
                 }
               />
+
+              <ProductSection
+                title="More Marlow Products"
+                products={homeProducts.slice(
+                  16,
+                  40
+                )}
+                onOpen={
+                  openProduct
+                }
+                onSeeAll={() =>
+                  window.scrollTo(
+                    {
+                      top:
+                        document.body
+                          .scrollHeight,
+                      behavior:
+                        "smooth",
+                    }
+                  )
+                }
+              />
             </>
           ) : null}
         </div>
@@ -2520,19 +3038,29 @@ export default function Home() {
         <footer className="footer">
           <div className="footer-inner">
             <div>
-              <h2>MARLOW</h2>
+              <h2>
+                MARLOW
+              </h2>
 
               <p>
                 A simple place to
-                discover products
-                you love.
+                discover products you
+                love.
               </p>
             </div>
 
             <div className="footer-links">
-              <span>Shop</span>
-              <span>Help</span>
-              <span>About</span>
+              <span>
+                Shop
+              </span>
+
+              <span>
+                Help
+              </span>
+
+              <span>
+                About
+              </span>
             </div>
           </div>
         </footer>
@@ -2541,7 +3069,9 @@ export default function Home() {
           <div
             className="overlay"
             onClick={() =>
-              setProduct(null)
+              setProduct(
+                null
+              )
             }
           >
             <div
@@ -2554,7 +3084,9 @@ export default function Home() {
                 type="button"
                 className="modal-close"
                 onClick={() =>
-                  setProduct(null)
+                  setProduct(
+                    null
+                  )
                 }
               >
                 ×
@@ -2570,6 +3102,7 @@ export default function Home() {
                       alt={
                         product.name
                       }
+                      loading="lazy"
                     />
                   ) : (
                     <div className="image-placeholder">
@@ -2586,9 +3119,7 @@ export default function Home() {
                   </p>
 
                   <h2>
-                    {
-                      product.name
-                    }
+                    {product.name}
                   </h2>
 
                   <div className="detail-price">
@@ -2626,7 +3157,9 @@ export default function Home() {
           <div
             className="overlay"
             onClick={() =>
-              setCartOpen(false)
+              setCartOpen(
+                false
+              )
             }
           >
             <aside
@@ -2677,6 +3210,7 @@ export default function Home() {
                             alt={
                               item.name
                             }
+                            loading="lazy"
                           />
                         ) : (
                           <div className="image-placeholder">
