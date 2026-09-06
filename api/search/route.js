@@ -20,7 +20,7 @@ const MAX_PAGE = 1000;
   The goal is reliability first, while still allowing
   Marlow to load products normally.
 */
-const CJ_REQUEST_INTERVAL_MS = 1200;
+const CJ_REQUEST_INTERVAL_MS = 1000;
 const CJ_AUTH_INTERVAL_MS = 1500;
 
 let cachedAccessToken = null;
@@ -41,7 +41,8 @@ let lastCJAuthRequestAt = 0;
 */
 const responseCache = new Map();
 
-const RESPONSE_CACHE_TTL_MS = 60 * 1000;
+const RESPONSE_CACHE_TTL_MS =
+  5 * 60 * 1000;
 
 /*
   Keep CJ requests in one queue.
@@ -97,9 +98,13 @@ async function getAccessToken() {
   const apiKey = process.env.CJ_API_KEY;
 
   if (!apiKey) {
-    throw new Error(
+    const error = new Error(
       "CJ_API_KEY is not configured in Vercel."
     );
+
+    error.status = 500;
+
+    throw error;
   }
 
   /*
@@ -137,29 +142,44 @@ async function getAccessToken() {
 
       await waitForCJAuthSlot();
 
-      const response = await fetch(CJ_AUTH_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          apiKey,
-        }),
-        cache: "no-store",
-      });
+      const response = await fetch(
+        CJ_AUTH_URL,
+        {
+          method: "POST",
 
-      const json = await response
-        .json()
-        .catch(() => null);
+          headers: {
+            "Content-Type":
+              "application/json",
+
+            Accept:
+              "application/json",
+          },
+
+          body: JSON.stringify({
+            apiKey,
+          }),
+
+          cache: "no-store",
+        }
+      );
+
+      const json =
+        await response
+          .json()
+          .catch(() => null);
 
       if (!response.ok || !json) {
         const error = new Error(
           json?.message ||
+            json?.msg ||
             `CJ authentication failed with HTTP ${response.status}.`
         );
 
-        error.status = response.status;
-        error.cjResponse = json;
+        error.status =
+          response.status;
+
+        error.cjResponse =
+          json;
 
         throw error;
       }
@@ -176,7 +196,9 @@ async function getAccessToken() {
         );
 
         error.status = 502;
-        error.cjResponse = json;
+
+        error.cjResponse =
+          json;
 
         throw error;
       }
@@ -186,9 +208,9 @@ async function getAccessToken() {
       /*
         CJ access tokens are long-lived.
 
-        We intentionally refresh much earlier than the
-        actual expiration so Marlow doesn't suddenly lose
-        authentication during normal operation.
+        Refresh much earlier than the actual
+        expiration so Marlow does not suddenly
+        lose authentication during normal use.
       */
       tokenExpiresAt =
         Date.now() +
@@ -400,6 +422,7 @@ function convertProduct(product) {
       the current frontend/backend.
     */
     supplier: "CJ",
+
     source: "CJ",
 
     productId: String(id),
@@ -552,22 +575,31 @@ function isSuccessfulCJResponse(json) {
     return false;
   }
 
-  if (json.code === 200) {
+  if (
+    json.code === 200 ||
+    json.code === "200"
+  ) {
     return true;
   }
 
-  if (json.success === true) {
+  if (
+    json.success === true
+  ) {
     return true;
   }
 
-  if (json.result === true) {
+  if (
+    json.result === true
+  ) {
     return true;
   }
 
   return false;
 }
 
-function getRetryAfterMilliseconds(response) {
+function getRetryAfterMilliseconds(
+  response
+) {
   const header =
     response.headers.get(
       "retry-after"
@@ -619,10 +651,13 @@ function makeProductCacheKey({
 }) {
   return [
     String(page),
+
     String(size),
+
     String(keyword || "")
       .trim()
       .toLowerCase(),
+
     String(categoryId || "")
       .trim(),
   ].join("|");
@@ -641,7 +676,10 @@ function getCachedProductResponse(key) {
       cached.createdAt >
     RESPONSE_CACHE_TTL_MS
   ) {
-    responseCache.delete(key);
+    responseCache.delete(
+      key
+    );
+
     return null;
   }
 
@@ -659,7 +697,8 @@ function setCachedProductResponse(
     responseCache.size > 200
   ) {
     const firstKey =
-      responseCache.keys().next()
+      responseCache.keys()
+        .next()
         .value;
 
     if (firstKey) {
@@ -702,7 +741,7 @@ async function fetchCJProducts({
     Get the token before entering the
     product request queue.
   */
-  const token =
+  let token =
     await getAccessToken();
 
   const url =
@@ -770,6 +809,7 @@ async function fetchCJProducts({
           url.toString(),
           {
             method: "GET",
+
             headers: {
               "CJ-Access-Token":
                 token,
@@ -777,6 +817,7 @@ async function fetchCJProducts({
               Accept:
                 "application/json",
             },
+
             cache: "no-store",
           }
         );
@@ -790,7 +831,17 @@ async function fetchCJProducts({
         attempt >=
         MAX_ATTEMPTS
       ) {
-        throw networkError;
+        const error =
+          new Error(
+            "Unable to connect to the CJ product catalog."
+          );
+
+        error.status = 502;
+
+        error.cause =
+          networkError;
+
+        throw error;
       }
 
       const delay =
@@ -820,63 +871,101 @@ async function fetchCJProducts({
 
     /*
       If the token has become invalid,
-      clear it so a future request can
-      authenticate again.
+      clear it and get a fresh token.
     */
     if (
       response.status === 401 ||
       response.status === 403 ||
       json?.code === 401 ||
-      json?.code === 1600200
+      json?.code === "401" ||
+      json?.code === 1600200 ||
+      json?.code === "1600200"
     ) {
-      cachedAccessToken = null;
+      cachedAccessToken =
+        null;
+
       tokenExpiresAt = 0;
 
-      if (
-        attempt <
-        MAX_ATTEMPTS
-      ) {
-        /*
-          Get a fresh token and retry.
-        */
-        const newToken =
-          await getAccessToken();
-
-        return fetchCJProducts({
-          page,
-          size,
-          keyword,
-          categoryId,
-        });
-      }
-    }
-
-    /*
-      CJ rate limit.
-
-      Wait according to Retry-After if CJ
-      provides it. Otherwise use exponential
-      backoff.
-    */
-    if (
-      response.status === 429 ||
-      response.status === 503 ||
-      json?.code === 429
-    ) {
       if (
         attempt >=
         MAX_ATTEMPTS
       ) {
-        const message =
-          json?.message ||
-          "CJ is temporarily rate limiting product requests.";
-
         const error =
-          new Error(message);
+          new Error(
+            "CJ authentication expired."
+          );
 
         error.status =
-          response.status ||
-          429;
+          response.status;
+
+        error.cjResponse =
+          json;
+
+        throw error;
+      }
+
+      token =
+        await getAccessToken();
+
+      continue;
+    }
+
+    /*
+      CJ rate-limit handling.
+
+      CJ may report rate limiting through
+      HTTP 429, 502, 503, 504, or application
+      codes such as 402 and 406.
+    */
+    const cjCode =
+      String(
+        json?.code ??
+          json?.data?.code ??
+          ""
+      ).toLowerCase();
+
+    const cjMessage =
+      String(
+        json?.message ||
+          json?.msg ||
+          json?.data?.message ||
+          ""
+      ).toLowerCase();
+
+    const isRateLimited =
+      response.status === 429 ||
+      response.status === 502 ||
+      response.status === 503 ||
+      response.status === 504 ||
+      cjCode === "402" ||
+      cjCode === "406" ||
+      cjCode === "429" ||
+      cjMessage.includes(
+        "too many requests"
+      ) ||
+      cjMessage.includes(
+        "qps"
+      ) ||
+      cjMessage.includes(
+        "rate limit"
+      ) ||
+      cjMessage.includes(
+        "request too frequent"
+      );
+
+    if (isRateLimited) {
+      if (
+        attempt >=
+        MAX_ATTEMPTS
+      ) {
+        const error =
+          new Error(
+            json?.message ||
+              json?.msg ||
+              "CJ is temporarily rate limiting product requests."
+          );
+
+        error.status = 429;
 
         error.cjResponse =
           json;
@@ -889,7 +978,7 @@ async function fetchCJProducts({
           response
         );
 
-      const backoff =
+      const exponentialBackoff =
         Math.min(
           12000,
           2000 *
@@ -901,10 +990,10 @@ async function fetchCJProducts({
 
       const delay =
         retryAfter ||
-        backoff;
+        exponentialBackoff;
 
       console.warn(
-        `CJ rate limit on attempt ${attempt}. Retrying in ${delay}ms.`
+        `CJ rate limit detected on attempt ${attempt}. Retrying in ${delay}ms.`
       );
 
       await new Promise(
@@ -918,6 +1007,9 @@ async function fetchCJProducts({
       continue;
     }
 
+    /*
+      Other HTTP errors.
+    */
     if (!response.ok) {
       const message =
         json?.message ||
@@ -936,6 +1028,10 @@ async function fetchCJProducts({
       throw error;
     }
 
+    /*
+      CJ returned HTTP 200 but reported
+      an application-level failure.
+    */
     if (
       !isSuccessfulCJResponse(
         json
@@ -944,11 +1040,11 @@ async function fetchCJProducts({
       const error =
         new Error(
           json?.message ||
+            json?.msg ||
             "CJ returned an unsuccessful product response."
         );
 
-      error.status =
-        502;
+      error.status = 502;
 
       error.cjResponse =
         json;
@@ -983,9 +1079,14 @@ async function fetchCJProducts({
     return result;
   }
 
-  throw new Error(
-    "CJ product request could not be completed."
-  );
+  const error =
+    new Error(
+      "CJ product request could not be completed."
+    );
+
+  error.status = 502;
+
+  throw error;
 }
 
 function dedupeProducts(
@@ -1102,18 +1203,27 @@ export async function GET(
           )
         : DEFAULT_PAGE_SIZE;
 
+    const cleanKeyword =
+      String(
+        keyword
+      ).trim();
+
+    const cleanCategoryId =
+      String(
+        categoryId
+      ).trim();
+
     const result =
       await fetchCJProducts({
         page,
+
         size,
+
         keyword:
-          String(
-            keyword
-          ).trim(),
+          cleanKeyword,
+
         categoryId:
-          String(
-            categoryId
-          ).trim(),
+          cleanCategoryId,
       });
 
     const uniqueRawProducts =
@@ -1189,22 +1299,18 @@ export async function GET(
         hasMore,
 
         query:
-          String(
-            keyword
-          ).trim(),
+          cleanKeyword,
 
         categoryId:
-          String(
-            categoryId
-          ).trim(),
+          cleanCategoryId,
       },
       {
         status: 200,
 
         headers: {
           /*
-            Allow Vercel to reuse successful
-            responses for a short period.
+            Successful catalog responses can
+            be reused briefly by Vercel/CDN.
           */
           "Cache-Control":
             "public, s-maxage=60, stale-while-revalidate=180",
