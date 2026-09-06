@@ -976,87 +976,73 @@ async function fetchCategoryProducts(
   signal,
   onProducts
 ) {
-  const queries =
-    CATEGORY_VARIANTS[
-      category
-    ] || [
-      CATEGORY_SEARCHES[
-        category
-      ],
-    ];
+  const query =
+    CATEGORY_SEARCHES[category] ||
+    category;
 
   let products = [];
 
-  for (const query of queries) {
-    if (
-      signal?.aborted
-    ) {
-      throw new DOMException(
-        "Request cancelled",
-        "AbortError"
-      );
-    }
-
-    try {
-      await fetchAllCJPages(
-        query,
-        signal,
-        (batch) => {
-          const converted =
-            batch
-              .map(
-                (
+  try {
+    await fetchAllCJPages(
+      query,
+      signal,
+      (batch) => {
+        const converted =
+          batch
+            .map(
+              (
+                product,
+                index
+              ) =>
+                convertSupplierProduct(
                   product,
-                  index
-                ) =>
-                  convertSupplierProduct(
-                    product,
-                    products.length +
-                      index
-                  )
-              )
-              .filter(Boolean);
-
-          products =
-            uniqueProducts([
-              ...products,
-              ...converted,
-            ]);
-
-          const categorized =
-            products.filter(
-              (product) =>
-                matchesCategory(
-                  product,
-                  category
+                  products.length +
+                    index
                 )
-            );
-
-          /*
-            Display category products as they arrive.
-          */
-          onProducts(
-            sortProducts(
-              categorized.length
-                ? categorized
-                : products
             )
-          );
-        }
-      );
-    } catch (error) {
-      if (
-        error?.name ===
-        "AbortError"
-      ) {
-        throw error;
-      }
+            .filter(Boolean);
 
-      console.error(
-        `Category query failed: ${query}`,
-        error
-      );
+        products =
+          uniqueProducts([
+            ...products,
+            ...converted,
+          ]);
+
+        const categorized =
+          products.filter(
+            (product) =>
+              matchesCategory(
+                product,
+                category
+              )
+          );
+
+        const displayProducts =
+          categorized.length
+            ? categorized
+            : products;
+
+        onProducts(
+          sortProducts(
+            displayProducts
+          )
+        );
+      }
+    );
+  } catch (error) {
+    if (
+      error?.name ===
+      "AbortError"
+    ) {
+      throw error;
     }
+
+    console.error(
+      `Category query failed: ${query}`,
+      error
+    );
+
+    throw error;
   }
 
   const categorized =
