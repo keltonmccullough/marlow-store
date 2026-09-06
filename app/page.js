@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 const HOME_PRODUCT_LIMIT = 375;
 const PAGE_SIZE = 100;
@@ -234,15 +234,11 @@ function getUniqueProductKey(product) {
     return `cj-${String(cjId).trim()}`;
   }
 
-  const name = String(
-    getSupplierName(product) || ""
-  )
+  const name = String(getSupplierName(product) || "")
     .trim()
     .toLowerCase();
 
-  const image = String(
-    getSupplierImage(product) || ""
-  )
+  const image = String(getSupplierImage(product) || "")
     .trim()
     .toLowerCase();
 
@@ -258,9 +254,7 @@ function uniqueProducts(products) {
 
     const key = getUniqueProductKey(product);
 
-    if (seen.has(key)) {
-      continue;
-    }
+    if (seen.has(key)) continue;
 
     seen.add(key);
     unique.push(product);
@@ -419,97 +413,320 @@ function convertSupplierProduct(product, index = 0) {
 
 function sortProducts(products) {
   return [...products].sort((a, b) => {
-    const aName = String(
-      a?.name || ""
-    ).toLowerCase();
-
-    const bName = String(
-      b?.name || ""
-    ).toLowerCase();
+    const aName = String(a?.name || "").toLowerCase();
+    const bName = String(b?.name || "").toLowerCase();
 
     return aName.localeCompare(bName);
   });
 }
 
 function matchesCategory(product, category) {
-  if (category === "All") {
-    return true;
+  return category === "All" || product?.category === category;
+}
+
+/* =========================================================
+   SEARCH INTENT
+========================================================= */
+
+function normalizeSearchQuery(query) {
+  const clean = query.trim().toLowerCase();
+
+  const aliases = [
+    {
+      words: ["phone", "phones", "cell phone"],
+      query: "phone accessories",
+    },
+    {
+      words: ["cellphone accessories"],
+      query: "phone accessories",
+    },
+    {
+      words: ["earbuds", "ear buds"],
+      query: "bluetooth earbuds headphones",
+    },
+    {
+      words: ["laptop", "laptops"],
+      query: "laptop computer accessories",
+    },
+    {
+      words: ["women clothes", "womens clothes"],
+      query: "women clothing apparel fashion",
+    },
+    {
+      words: ["men clothes", "mens clothes"],
+      query: "men clothing apparel fashion",
+    },
+    {
+      words: ["kids", "children"],
+      query: "kids toys children",
+    },
+    {
+      words: ["makeup"],
+      query: "beauty makeup cosmetics",
+    },
+    {
+      words: ["cheap", "cheapest", "low price", "low priced"],
+      query: clean.replace(
+        /\b(cheap|cheapest|low price|low priced)\b/gi,
+        ""
+      ).trim() || "popular products",
+    },
+    {
+      words: ["expensive", "highest price", "high price"],
+      query: clean.replace(
+        /\b(expensive|highest price|high price)\b/gi,
+        ""
+      ).trim() || "popular products",
+    },
+  ];
+
+  for (const alias of aliases) {
+    if (
+      alias.words.some((word) =>
+        clean.includes(word)
+      )
+    ) {
+      return alias.query;
+    }
   }
 
-  return product?.category === category;
+  return query.trim();
+}
+
+function getSearchSortMode(query) {
+  const text = query.toLowerCase();
+
+  if (
+    /cheap|cheapest|lowest|low price|low priced/.test(
+      text
+    )
+  ) {
+    return "cheap";
+  }
+
+  if (
+    /expensive|highest|high price|most expensive/.test(
+      text
+    )
+  ) {
+    return "expensive";
+  }
+
+  return "normal";
+}
+
+function sortSearchResults(products, originalQuery) {
+  const mode = getSearchSortMode(originalQuery);
+
+  if (mode === "cheap") {
+    return [...products].sort(
+      (a, b) =>
+        Number(a.price) -
+        Number(b.price)
+    );
+  }
+
+  if (mode === "expensive") {
+    return [...products].sort(
+      (a, b) =>
+        Number(b.price) -
+        Number(a.price)
+    );
+  }
+
+  return sortProducts(products);
 }
 
 /* =========================================================
    CJ API
+   RATE-LIMIT PROTECTION
 ========================================================= */
 
-async function fetchCJPage(query, page) {
+function sleep(ms, signal) {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(
+        new DOMException(
+          "Request cancelled",
+          "AbortError"
+        )
+      );
+      return;
+    }
+
+    const timer = setTimeout(resolve, ms);
+
+    const abortHandler = () => {
+      clearTimeout(timer);
+      reject(
+        new DOMException(
+          "Request cancelled",
+          "AbortError"
+        )
+      );
+    };
+
+    signal?.addEventListener(
+      "abort",
+      abortHandler,
+      { once: true }
+    );
+  });
+}
+
+async function fetchCJPage(
+  query,
+  page,
+  signal
+) {
   const params = new URLSearchParams();
 
   params.set("q", query);
   params.set("page", String(page));
   params.set("size", String(PAGE_SIZE));
 
-  const response = await fetch(
-    `/api/search?${params.toString()}`,
-    {
-      cache: "no-store",
+  let lastError = null;
+
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try {
+      const response = await fetch(
+        `/api/search?${params.toString()}`,
+        {
+          cache: "no-store",
+          signal,
+        }
+      );
+
+      if (response.ok) {
+        const data =
+          await response.json();
+
+        if (
+          !data ||
+          typeof data !== "object"
+        ) {
+          throw new Error(
+            "Invalid catalog response."
+          );
+        }
+
+        if (
+          data.success === false
+        ) {
+          throw new Error(
+            data.error ||
+              "The product catalog could not be loaded."
+          );
+        }
+
+        return data;
+      }
+
+      const status = response.status;
+
+      if (
+        status === 429 ||
+        status === 502 ||
+        status === 503 ||
+        status === 504
+      ) {
+        lastError = new Error(
+          `Catalog temporarily busy: ${status}`
+        );
+
+        const delay =
+          900 *
+          Math.pow(2, attempt);
+
+        await sleep(
+          delay,
+          signal
+        );
+
+        continue;
+      }
+
+      throw new Error(
+        `Search request failed: ${status}`
+      );
+    } catch (error) {
+      if (
+        error?.name ===
+        "AbortError"
+      ) {
+        throw error;
+      }
+
+      lastError = error;
+
+      if (
+        attempt < 3
+      ) {
+        await sleep(
+          900 *
+            Math.pow(
+              2,
+              attempt
+            ),
+          signal
+        );
+      }
     }
+  }
+
+  throw (
+    lastError ||
+    new Error(
+      "Catalog request failed."
+    )
   );
-
-  if (!response.ok) {
-    throw new Error(
-      `Search request failed: ${response.status}`
-    );
-  }
-
-  const data = await response.json();
-
-  if (!data || typeof data !== "object") {
-    throw new Error(
-      "Invalid catalog response."
-    );
-  }
-
-  if (data.success === false) {
-    throw new Error(
-      data.error ||
-        "The product catalog could not be loaded."
-    );
-  }
-
-  return data;
 }
 
 /* =========================================================
    GET ALL CJ PAGES
-   SEARCH AND CATEGORY ONLY
 ========================================================= */
 
-async function fetchAllCJPages(query) {
+async function fetchAllCJPages(
+  query,
+  signal,
+  onBatch
+) {
   let page = 1;
   let hasMore = true;
 
   const allProducts = [];
   const seen = new Set();
 
-  while (hasMore) {
+  while (
+    hasMore &&
+    page <= 1000
+  ) {
+    if (signal?.aborted) {
+      throw new DOMException(
+        "Request cancelled",
+        "AbortError"
+      );
+    }
+
     const data =
       await fetchCJPage(
         query,
-        page
+        page,
+        signal
       );
 
     const batch =
-      Array.isArray(data?.products)
+      Array.isArray(
+        data?.products
+      )
         ? data.products
         : [];
 
-    if (batch.length === 0) {
+    if (!batch.length) {
       break;
     }
 
-    let newProductsOnPage = 0;
+    const newBatch = [];
 
     for (const product of batch) {
       const key =
@@ -523,43 +740,61 @@ async function fetchAllCJPages(query) {
 
       seen.add(key);
       allProducts.push(product);
-      newProductsOnPage += 1;
+      newBatch.push(product);
     }
 
-    if (
-      newProductsOnPage === 0
-    ) {
-      break;
+    if (newBatch.length) {
+      onBatch?.(newBatch);
     }
 
     hasMore =
       Boolean(data?.hasMore);
 
+    if (
+      !hasMore &&
+      data?.totalPages &&
+      page <
+        Number(
+          data.totalPages
+        )
+    ) {
+      hasMore = true;
+    }
+
+    if (
+      newBatch.length === 0
+    ) {
+      break;
+    }
+
     page += 1;
+
+    /*
+      Small pause between pages prevents
+      hammering the CJ endpoint.
+    */
+    if (hasMore) {
+      await sleep(
+        250,
+        signal
+      );
+    }
   }
 
   return allProducts;
 }
 
 /* =========================================================
-   FAST HOMEPAGE LOADER
-
-   IMPORTANT:
-   This does NOT wait for all 375 products.
-
-   Products are sent to the screen immediately as
-   each CJ page arrives.
-
-   The loader continues in the background until
-   375 unique usable products have been collected.
+   HOMEPAGE LOADER
 ========================================================= */
 
 async function loadHomepageProducts(
   queries,
   target,
+  signal,
   onProducts
 ) {
-  let collected = [];
+  const collected = [];
   const seen = new Set();
 
   for (const query of queries) {
@@ -579,10 +814,20 @@ async function loadHomepageProducts(
         target &&
       page <= 1000
     ) {
+      if (
+        signal?.aborted
+      ) {
+        throw new DOMException(
+          "Request cancelled",
+          "AbortError"
+        );
+      }
+
       const data =
         await fetchCJPage(
           query,
-          page
+          page,
+          signal
         );
 
       const batch =
@@ -596,19 +841,17 @@ async function loadHomepageProducts(
         break;
       }
 
-      let added = false;
-
       for (const product of batch) {
         const key =
           getUniqueProductKey(
             product
           );
 
-        if (seen.has(key)) {
+        if (
+          seen.has(key)
+        ) {
           continue;
         }
-
-        seen.add(key);
 
         const converted =
           convertSupplierProduct(
@@ -620,47 +863,59 @@ async function loadHomepageProducts(
           continue;
         }
 
-        collected.push(
-          product
+        seen.add(key);
+        collected.push(product);
+
+        const current =
+          collected
+            .map(
+              (
+                item,
+                index
+              ) =>
+                convertSupplierProduct(
+                  item,
+                  index
+                )
+            )
+            .filter(Boolean);
+
+        const unique =
+          uniqueProducts(
+            current
+          );
+
+        onProducts(
+          sortProducts(
+            unique
+          ).slice(
+            0,
+            target
+          )
         );
 
-        added = true;
+        if (
+          unique.length >=
+          target
+        ) {
+          break;
+        }
       }
 
-      /*
-        Convert everything collected so far and
-        immediately send it to the page.
-      */
-      const converted =
+      if (
         collected
           .map(
             (
-              product,
+              item,
               index
             ) =>
               convertSupplierProduct(
-                product,
+                item,
                 index
               )
           )
-          .filter(Boolean);
-
-      const uniqueConverted =
-        uniqueProducts(
-          converted
-        );
-
-      onProducts(
-        sortProducts(
-          uniqueConverted
-        ).slice(
-          0,
-          target
-        )
-      );
-
-      if (
-        collected.length >=
+          .filter(Boolean)
+          .length >=
         target
       ) {
         break;
@@ -670,33 +925,41 @@ async function loadHomepageProducts(
         Boolean(data?.hasMore);
 
       if (
-        !added &&
-        !hasMore
+        !hasMore &&
+        data?.totalPages &&
+        page <
+          Number(
+            data.totalPages
+          )
       ) {
-        break;
+        hasMore = true;
       }
 
       page += 1;
+
+      if (hasMore) {
+        await sleep(
+          250,
+          signal
+        );
+      }
     }
   }
 
-  const finalConverted =
-    collected
-      .map(
-        (
-          product,
-          index
-        ) =>
-          convertSupplierProduct(
-            product,
-            index
-          )
-      )
-      .filter(Boolean);
-
   return sortProducts(
     uniqueProducts(
-      finalConverted
+      collected
+        .map(
+          (
+            product,
+            index
+          ) =>
+            convertSupplierProduct(
+              product,
+              index
+            )
+        )
+        .filter(Boolean)
     )
   ).slice(
     0,
@@ -705,11 +968,13 @@ async function loadHomepageProducts(
 }
 
 /* =========================================================
-   CATEGORY LOADING
+   CATEGORY LOADER
 ========================================================= */
 
 async function fetchCategoryProducts(
-  category
+  category,
+  signal,
+  onProducts
 ) {
   const queries =
     CATEGORY_VARIANTS[
@@ -723,45 +988,79 @@ async function fetchCategoryProducts(
   let products = [];
 
   for (const query of queries) {
-    if (!query) {
-      continue;
+    if (
+      signal?.aborted
+    ) {
+      throw new DOMException(
+        "Request cancelled",
+        "AbortError"
+      );
     }
 
     try {
-      const results =
-        await fetchAllCJPages(
-          query
-        );
+      await fetchAllCJPages(
+        query,
+        signal,
+        (batch) => {
+          const converted =
+            batch
+              .map(
+                (
+                  product,
+                  index
+                ) =>
+                  convertSupplierProduct(
+                    product,
+                    products.length +
+                      index
+                  )
+              )
+              .filter(Boolean);
 
-      products =
-        uniqueProducts([
-          ...products,
-          ...results,
-        ]);
+          products =
+            uniqueProducts([
+              ...products,
+              ...converted,
+            ]);
+
+          const categorized =
+            products.filter(
+              (product) =>
+                matchesCategory(
+                  product,
+                  category
+                )
+            );
+
+          /*
+            Display category products as they arrive.
+          */
+          onProducts(
+            sortProducts(
+              categorized.length
+                ? categorized
+                : products
+            )
+          );
+        }
+      );
     } catch (error) {
+      if (
+        error?.name ===
+        "AbortError"
+      ) {
+        throw error;
+      }
+
       console.error(
-        `Category search failed for ${query}`,
+        `Category query failed: ${query}`,
         error
       );
     }
   }
 
-  const converted =
-    products
-      .map(
-        (
-          product,
-          index
-        ) =>
-          convertSupplierProduct(
-            product,
-            index
-          )
-      )
-      .filter(Boolean);
-
   const categorized =
-    converted.filter(
+    products.filter(
       (product) =>
         matchesCategory(
           product,
@@ -769,20 +1068,11 @@ async function fetchCategoryProducts(
         )
     );
 
-  if (
-    categorized.length ===
-    0
-  ) {
-    return sortProducts(
-      uniqueProducts(
-        converted
-      )
-    );
-  }
-
   return sortProducts(
     uniqueProducts(
-      categorized
+      categorized.length
+        ? categorized
+        : products
     )
   );
 }
@@ -1035,7 +1325,6 @@ function AccountModal({
       });
 
       setPassword("");
-
       return;
     }
 
@@ -1111,8 +1400,7 @@ function AccountModal({
             </span>
 
             <h2>
-              {mode ===
-              "create"
+              {mode === "create"
                 ? "Create your account"
                 : "Sign in to Marlow"}
             </h2>
@@ -1126,20 +1414,15 @@ function AccountModal({
 
             <form
               className="account-form"
-              onSubmit={
-                handleSubmit
-              }
+              onSubmit={handleSubmit}
             >
               {mode ===
                 "create" && (
                 <input
                   value={name}
-                  onChange={(
-                    event
-                  ) =>
+                  onChange={(event) =>
                     setName(
-                      event.target
-                        .value
+                      event.target.value
                     )
                   }
                   placeholder="Full name"
@@ -1152,8 +1435,7 @@ function AccountModal({
                 value={email}
                 onChange={(event) =>
                   setEmail(
-                    event.target
-                      .value
+                    event.target.value
                   )
                 }
                 placeholder="Email address"
@@ -1165,14 +1447,12 @@ function AccountModal({
                 value={password}
                 onChange={(event) =>
                   setPassword(
-                    event.target
-                      .value
+                    event.target.value
                   )
                 }
                 placeholder="Password"
                 autoComplete={
-                  mode ===
-                  "create"
+                  mode === "create"
                     ? "new-password"
                     : "current-password"
                 }
@@ -1188,8 +1468,7 @@ function AccountModal({
                 type="submit"
                 className="modal-add-button"
               >
-                {mode ===
-                "create"
+                {mode === "create"
                   ? "Create Account"
                   : "Sign In"}
               </button>
@@ -1198,20 +1477,16 @@ function AccountModal({
             <button
               className="account-switch"
               onClick={() => {
-                setAccountError(
-                  ""
-                );
+                setAccountError("");
 
                 setMode(
-                  mode ===
-                    "create"
+                  mode === "create"
                     ? "signin"
                     : "create"
                 );
               }}
             >
-              {mode ===
-              "create"
+              {mode === "create"
                 ? "Already have an account? Sign in"
                 : "Need an account? Create one"}
             </button>
@@ -1290,35 +1565,25 @@ function CartDrawer({
                     key={item.id}
                   >
                     <img
-                      src={
-                        item.image
-                      }
-                      alt={
-                        item.name
-                      }
+                      src={item.image}
+                      alt={item.name}
                     />
 
                     <div className="cart-item-info">
                       <strong>
-                        {
-                          item.name
-                        }
+                        {item.name}
                       </strong>
 
                       <span>
                         $
                         {Number(
                           item.price
-                        ).toFixed(
-                          2
-                        )}
+                        ).toFixed(2)}
                       </span>
 
                       <span>
                         Quantity:{" "}
-                        {
-                          item.quantity
-                        }
+                        {item.quantity}
                       </span>
 
                       <button
@@ -1370,6 +1635,198 @@ function CartDrawer({
           </>
         )}
       </aside>
+    </div>
+  );
+}
+
+/* =========================================================
+   MARLOW ASSISTANT
+========================================================= */
+
+function MarlowAssistant({
+  onSearch,
+  onCategory,
+  onClose,
+}) {
+  const [message, setMessage] =
+    useState("");
+
+  const [messages, setMessages] =
+    useState([
+      {
+        from: "assistant",
+        text:
+          "Hi! I'm the Marlow Assistant. Tell me what you're looking for and I'll help you find it.",
+      },
+    ]);
+
+  function handleSubmit(event) {
+    event.preventDefault();
+
+    const clean =
+      message.trim();
+
+    if (!clean) return;
+
+    setMessages((current) => [
+      ...current,
+      {
+        from: "user",
+        text: clean,
+      },
+    ]);
+
+    const lower =
+      clean.toLowerCase();
+
+    let response =
+      "I'll search Marlow for that.";
+
+    const categoryMap = [
+      [
+        "electronics",
+        "Electronics",
+      ],
+      ["phone", "Electronics"],
+      ["computer", "Electronics"],
+      ["laptop", "Electronics"],
+      ["home", "Home"],
+      ["kitchen", "Home"],
+      ["clothing", "Clothing"],
+      ["clothes", "Clothing"],
+      ["shoes", "Clothing"],
+      ["beauty", "Beauty"],
+      ["makeup", "Beauty"],
+      ["skincare", "Beauty"],
+      ["sports", "Sports"],
+      ["fitness", "Sports"],
+      ["gym", "Sports"],
+      ["toy", "Toys"],
+      ["kids", "Toys"],
+      ["travel", "Travel"],
+      ["luggage", "Travel"],
+      ["tools", "Tools"],
+    ];
+
+    const matched =
+      categoryMap.find(
+        ([word]) =>
+          lower.includes(word)
+      );
+
+    if (matched) {
+      response = `I'll show you Marlow products related to ${matched[1].toLowerCase()}.`;
+
+      onCategory(
+        matched[1]
+      );
+    } else {
+      response =
+        "I'll search the Marlow catalog for products matching that.";
+
+      onSearch(clean);
+    }
+
+    setMessages((current) => [
+      ...current,
+      {
+        from: "assistant",
+        text: response,
+      },
+    ]);
+
+    setMessage("");
+  }
+
+  return (
+    <div className="assistant-panel">
+      <div className="assistant-header">
+        <div>
+          <strong>
+            Marlow Assistant
+          </strong>
+
+          <span>
+            Product help
+          </span>
+        </div>
+
+        <button
+          className="assistant-close"
+          onClick={onClose}
+        >
+          ×
+        </button>
+      </div>
+
+      <div className="assistant-messages">
+        {messages.map(
+          (item, index) => (
+            <div
+              key={index}
+              className={
+                item.from ===
+                "user"
+                  ? "assistant-message user-message"
+                  : "assistant-message"
+              }
+            >
+              {item.text}
+            </div>
+          )
+        )}
+      </div>
+
+      <div className="assistant-suggestions">
+        <button
+          onClick={() =>
+            onSearch(
+              "cheap electronics"
+            )
+          }
+        >
+          Cheap electronics
+        </button>
+
+        <button
+          onClick={() =>
+            onSearch(
+              "phone accessories"
+            )
+          }
+        >
+          Phone accessories
+        </button>
+
+        <button
+          onClick={() =>
+            onSearch(
+              "women clothing"
+            )
+          }
+        >
+          Women's clothing
+        </button>
+      </div>
+
+      <form
+        className="assistant-form"
+        onSubmit={handleSubmit}
+      >
+        <input
+          value={message}
+          onChange={(event) =>
+            setMessage(
+              event.target.value
+            )
+          }
+          placeholder="What are you looking for?"
+        />
+
+        <button type="submit">
+          Send
+        </button>
+      </form>
     </div>
   );
 }
@@ -1434,8 +1891,41 @@ export default function Home() {
   const [accountOpen, setAccountOpen] =
     useState(false);
 
+  const [
+    assistantOpen,
+    setAssistantOpen,
+  ] = useState(false);
+
+  /*
+    These controllers are the important fix.
+    Whenever the customer starts a search/category,
+    the homepage background requests are cancelled.
+  */
+  const homeController =
+    useRef(null);
+
+  const categoryController =
+    useRef(null);
+
+  const searchController =
+    useRef(null);
+
   /* =======================================================
-     LOAD SAVED CART + ACCOUNT
+     CANCEL OTHER CATALOG REQUESTS
+  ======================================================= */
+
+  function cancelCatalogRequests() {
+    homeController.current?.abort();
+    categoryController.current?.abort();
+    searchController.current?.abort();
+
+    homeController.current = null;
+    categoryController.current = null;
+    searchController.current = null;
+  }
+
+  /* =======================================================
+     LOAD CART + ACCOUNT
   ======================================================= */
 
   useEffect(() => {
@@ -1479,11 +1969,9 @@ export default function Home() {
           setAccount(parsed);
         }
       }
-    } catch (
-      storageError
-    ) {
+    } catch (storageError) {
       console.error(
-        "Marlow local storage error:",
+        "Marlow storage error:",
         storageError
       );
     }
@@ -1501,33 +1989,30 @@ export default function Home() {
           cart
         )
       );
-    } catch (
-      storageError
-    ) {
+    } catch (storageError) {
       console.error(
-        "Could not save Marlow cart:",
+        "Could not save cart:",
         storageError
       );
     }
   }, [cart]);
 
   /* =======================================================
-     FAST HOMEPAGE LOADING
-     
-     The FIRST available products are displayed immediately.
-     The rest continue loading in the background.
-  ======================================================= */
+     HOMEPAGE
+======================================================= */
 
   useEffect(() => {
+    const controller =
+      new AbortController();
+
+    homeController.current =
+      controller;
+
     let cancelled = false;
 
-    async function loadHomeProducts() {
+    async function loadHome() {
       setError("");
 
-      /*
-        Try the browser cache first.
-        This makes returning visitors much faster.
-      */
       try {
         const cached =
           sessionStorage.getItem(
@@ -1571,11 +2056,9 @@ export default function Home() {
             );
           }
         }
-      } catch (
-        cacheError
-      ) {
+      } catch (cacheError) {
         console.error(
-          "Marlow homepage cache error:",
+          "Homepage cache error:",
           cacheError
         );
       }
@@ -1600,17 +2083,15 @@ export default function Home() {
           await loadHomepageProducts(
             queries,
             HOME_PRODUCT_LIMIT,
+            controller.signal,
             (products) => {
               if (
-                cancelled
+                cancelled ||
+                controller.signal.aborted
               ) {
                 return;
               }
 
-              /*
-                THIS IS THE IMPORTANT PART:
-                Products are displayed immediately.
-              */
               if (
                 products.length
               ) {
@@ -1622,11 +2103,6 @@ export default function Home() {
                   false
                 );
 
-                /*
-                  Save the newest product
-                  collection for a faster
-                  return visit.
-                */
                 try {
                   sessionStorage.setItem(
                     HOME_CACHE_KEY,
@@ -1641,11 +2117,9 @@ export default function Home() {
                       Date.now()
                     )
                   );
-                } catch (
-                  cacheError
-                ) {
+                } catch (cacheError) {
                   console.error(
-                    "Could not cache homepage products:",
+                    "Homepage cache save error:",
                     cacheError
                   );
                 }
@@ -1655,6 +2129,7 @@ export default function Home() {
 
         if (
           !cancelled &&
+          !controller.signal.aborted &&
           finalProducts.length
         ) {
           setHomeProducts(
@@ -1664,34 +2139,13 @@ export default function Home() {
           setLoadingHome(
             false
           );
-
-          try {
-            sessionStorage.setItem(
-              HOME_CACHE_KEY,
-              JSON.stringify(
-                finalProducts
-              )
-            );
-
-            sessionStorage.setItem(
-              HOME_CACHE_TIME_KEY,
-              String(
-                Date.now()
-              )
-            );
-          } catch (
-            cacheError
-          ) {
-            console.error(
-              "Could not save homepage cache:",
-              cacheError
-            );
-          }
         }
 
         if (
           !cancelled &&
-          !finalProducts.length
+          !controller.signal.aborted &&
+          !finalProducts.length &&
+          homeProducts.length === 0
         ) {
           setError(
             "We couldn't load the live product catalog right now."
@@ -1702,15 +2156,20 @@ export default function Home() {
           );
         }
       } catch (err) {
+        if (
+          err?.name ===
+          "AbortError"
+        ) {
+          return;
+        }
+
         console.error(
-          "Home catalog error:",
+          "Homepage catalog error:",
           err
         );
 
         if (
-          !cancelled &&
-          homeProducts.length ===
-            0
+          !cancelled
         ) {
           setError(
             "We couldn't load the live product catalog right now."
@@ -1723,56 +2182,103 @@ export default function Home() {
       }
     }
 
-    loadHomeProducts();
+    loadHome();
 
     return () => {
       cancelled = true;
+      controller.abort();
+
+      if (
+        homeController.current ===
+        controller
+      ) {
+        homeController.current =
+          null;
+      }
     };
   }, []);
 
   /* =======================================================
-     CATEGORY PAGE
+     CATEGORY
 ======================================================= */
 
   useEffect(() => {
+    if (
+      category === "All"
+    ) {
+      setCategoryProducts([]);
+      setLoadingCategory(false);
+      return;
+    }
+
+    const controller =
+      new AbortController();
+
+    categoryController.current =
+      controller;
+
     let cancelled = false;
 
+    setLoadingCategory(true);
+    setCategoryProducts([]);
+    setError("");
+
     async function loadCategory() {
-      if (
-        category ===
-        "All"
-      ) {
-        setCategoryProducts(
-          []
-        );
-        return;
-      }
-
-      setLoadingCategory(
-        true
-      );
-      setError("");
-
       try {
         const products =
           await fetchCategoryProducts(
-            category
+            category,
+            controller.signal,
+            (productsSoFar) => {
+              if (
+                cancelled ||
+                controller.signal.aborted
+              ) {
+                return;
+              }
+
+              setCategoryProducts(
+                uniqueProducts(
+                  productsSoFar
+                )
+              );
+
+              setLoadingCategory(
+                false
+              );
+            }
           );
 
-        if (!cancelled) {
+        if (
+          !cancelled &&
+          !controller.signal.aborted
+        ) {
           setCategoryProducts(
             uniqueProducts(
               products
             )
           );
+
+          setLoadingCategory(
+            false
+          );
         }
       } catch (err) {
+        if (
+          err?.name ===
+          "AbortError"
+        ) {
+          return;
+        }
+
         console.error(
-          "Category loading error:",
+          "Category error:",
           err
         );
 
-        if (!cancelled) {
+        if (
+          !cancelled
+        ) {
           setCategoryProducts(
             []
           );
@@ -1780,9 +2286,7 @@ export default function Home() {
           setError(
             "We couldn't load this category right now."
           );
-        }
-      } finally {
-        if (!cancelled) {
+
           setLoadingCategory(
             false
           );
@@ -1794,6 +2298,15 @@ export default function Home() {
 
     return () => {
       cancelled = true;
+      controller.abort();
+
+      if (
+        categoryController.current ===
+        controller
+      ) {
+        categoryController.current =
+          null;
+      }
     };
   }, [category]);
 
@@ -1808,59 +2321,94 @@ export default function Home() {
       query.trim();
 
     if (!cleanQuery) {
-      setSubmittedSearch(
-        ""
-      );
-
-      setSearchProducts(
-        []
-      );
-
-      setError("");
-
       return;
     }
+
+    cancelCatalogRequests();
+
+    const controller =
+      new AbortController();
+
+    searchController.current =
+      controller;
 
     setSearching(true);
     setSubmittedSearch(
       cleanQuery
     );
     setCategory("All");
+    setSearchProducts([]);
     setError("");
 
-    try {
-      const results =
-        await fetchAllCJPages(
-          cleanQuery
-        );
+    const actualQuery =
+      normalizeSearchQuery(
+        cleanQuery
+      );
 
-      const converted =
-        results
-          .map(
-            (
-              product,
-              index
-            ) =>
-              convertSupplierProduct(
-                product,
-                index
+    const sortMode =
+      getSearchSortMode(
+        cleanQuery
+      );
+
+    try {
+      let results = [];
+
+      await fetchAllCJPages(
+        actualQuery,
+        controller.signal,
+        (batch) => {
+          const converted =
+            batch
+              .map(
+                (
+                  product,
+                  index
+                ) =>
+                  convertSupplierProduct(
+                    product,
+                    index
+                  )
               )
-          )
-          .filter(
-            Boolean
+              .filter(Boolean);
+
+          results =
+            uniqueProducts([
+              ...results,
+              ...converted,
+            ]);
+
+          setSearchProducts(
+            sortSearchResults(
+              results,
+              cleanQuery
+            )
+          );
+        }
+      );
+
+      if (
+        !controller.signal.aborted
+      ) {
+        const final =
+          uniqueProducts(
+            results
           );
 
-      const unique =
-        uniqueProducts(
-          converted
+        setSearchProducts(
+          sortSearchResults(
+            final,
+            cleanQuery
+          )
         );
-
-      setSearchProducts(
-        sortProducts(
-          unique
-        )
-      );
+      }
     } catch (err) {
+      if (
+        err?.name ===
+        "AbortError"
+      ) {
+        return;
+      }
+
       console.error(
         "Search error:",
         err
@@ -1872,10 +2420,45 @@ export default function Home() {
         "We couldn't complete that search right now."
       );
     } finally {
-      setSearching(
-        false
-      );
+      if (
+        searchController.current ===
+        controller
+      ) {
+        searchController.current =
+          null;
+      }
+
+      if (
+        !controller.signal.aborted
+      ) {
+        setSearching(
+          false
+        );
+      }
     }
+  }
+
+  /* =======================================================
+     CATEGORY CLICK
+======================================================= */
+
+  function selectCategory(
+    item
+  ) {
+    cancelCatalogRequests();
+
+    setSubmittedSearch("");
+    setSearch("");
+    setSearchProducts([]);
+    setError("");
+
+    if (
+      item === "All"
+    ) {
+      setCategoryProducts([]);
+    }
+
+    setCategory(item);
   }
 
   /* =======================================================
@@ -1937,16 +2520,11 @@ export default function Home() {
           return;
         }
 
-        setAccount(
-          saved
-        );
-
+        setAccount(saved);
         return;
-      } catch (
-        accountError
-      ) {
+      } catch (accountError) {
         console.error(
-          "Account sign-in error:",
+          "Sign-in error:",
           accountError
         );
 
@@ -1994,9 +2572,7 @@ export default function Home() {
       alert(
         "Your Marlow account has been created."
       );
-    } catch (
-      accountError
-    ) {
+    } catch (accountError) {
       console.error(
         "Account creation error:",
         accountError
@@ -2053,9 +2629,7 @@ export default function Home() {
       }
     );
 
-    setCartOpen(
-      true
-    );
+    setCartOpen(true);
   }
 
   function removeFromCart(
@@ -2065,21 +2639,15 @@ export default function Home() {
       (current) =>
         current.filter(
           (item) =>
-            item.id !==
-            id
+            item.id !== id
         )
     );
   }
 
   function handleCheckout() {
     if (!account) {
-      setCartOpen(
-        false
-      );
-
-      setAccountOpen(
-        true
-      );
+      setCartOpen(false);
+      setAccountOpen(true);
 
       alert(
         "Please create a Marlow account or sign in before continuing to checkout."
@@ -2106,8 +2674,7 @@ export default function Home() {
       }
 
       if (
-        category !==
-        "All"
+        category !== "All"
       ) {
         return categoryProducts;
       }
@@ -2132,6 +2699,15 @@ export default function Home() {
       0
     );
 
+  const showLoading =
+    searching ||
+    loadingCategory ||
+    (
+      loadingHome &&
+      displayedProducts.length ===
+        0
+    );
+
   /* =======================================================
      RENDER
 ======================================================= */
@@ -2143,18 +2719,13 @@ export default function Home() {
           <button
             className="logo"
             onClick={() => {
-              setCategory(
-                "All"
-              );
+              cancelCatalogRequests();
 
-              setSubmittedSearch(
-                ""
-              );
-
-              setSearch(
-                ""
-              );
-
+              setCategory("All");
+              setSubmittedSearch("");
+              setSearch("");
+              setSearchProducts([]);
+              setCategoryProducts([]);
               setError("");
             }}
           >
@@ -2163,24 +2734,16 @@ export default function Home() {
 
           <form
             className="search-form"
-            onSubmit={(
-              event
-            ) => {
+            onSubmit={(event) => {
               event.preventDefault();
-
-              performSearch(
-                search
-              );
+              performSearch(search);
             }}
           >
             <input
               value={search}
-              onChange={(
-                event
-              ) =>
+              onChange={(event) =>
                 setSearch(
-                  event.target
-                    .value
+                  event.target.value
                 )
               }
               placeholder="Search products..."
@@ -2195,9 +2758,7 @@ export default function Home() {
           <div className="header-actions">
             <button
               onClick={() =>
-                setAccountOpen(
-                  true
-                )
+                setAccountOpen(true)
               }
             >
               {account
@@ -2208,10 +2769,7 @@ export default function Home() {
             <button
               onClick={() => {
                 if (!account) {
-                  setAccountOpen(
-                    true
-                  );
-
+                  setAccountOpen(true);
                   return;
                 }
 
@@ -2226,19 +2784,14 @@ export default function Home() {
             <button
               className="cart-button"
               onClick={() =>
-                setCartOpen(
-                  true
-                )
+                setCartOpen(true)
               }
             >
               Cart
 
-              {cartCount >
-                0 && (
+              {cartCount > 0 && (
                 <span className="cart-count">
-                  {
-                    cartCount
-                  }
+                  {cartCount}
                 </span>
               )}
             </button>
@@ -2253,31 +2806,14 @@ export default function Home() {
               <button
                 key={item}
                 className={
-                  category ===
-                    item &&
+                  category === item &&
                   !submittedSearch
                     ? "category-button active"
                     : "category-button"
                 }
-                onClick={() => {
-                  setCategory(
-                    item
-                  );
-
-                  setSubmittedSearch(
-                    ""
-                  );
-
-                  setSearch(
-                    ""
-                  );
-
-                  setSearchProducts(
-                    []
-                  );
-
-                  setError("");
-                }}
+                onClick={() =>
+                  selectCategory(item)
+                }
               >
                 {item}
               </button>
@@ -2287,8 +2823,7 @@ export default function Home() {
       </nav>
 
       {!submittedSearch &&
-        category ===
-          "All" && (
+        category === "All" && (
           <section className="hero">
             <div className="hero-content">
               <span className="hero-eyebrow">
@@ -2307,8 +2842,7 @@ export default function Home() {
                 electronics,
                 home, clothing,
                 beauty, sports,
-                travel and
-                more.
+                travel and more.
               </p>
 
               <button
@@ -2318,12 +2852,10 @@ export default function Home() {
                     .getElementById(
                       "products"
                     )
-                    ?.scrollIntoView(
-                      {
-                        behavior:
-                          "smooth",
-                      }
-                    );
+                    ?.scrollIntoView({
+                      behavior:
+                        "smooth",
+                    });
                 }}
               >
                 Shop Marlow
@@ -2346,14 +2878,10 @@ export default function Home() {
 
                 <h2>
                   Results for "
-                  {
-                    submittedSearch
-                  }
-                  "
+                  {submittedSearch}"
                 </h2>
               </>
-            ) : category !==
-              "All" ? (
+            ) : category !== "All" ? (
               <>
                 <span className="eyebrow">
                   Marlow Category
@@ -2379,21 +2907,18 @@ export default function Home() {
           {submittedSearch &&
             !searching && (
               <div className="product-count">
-                {
-                  displayedProducts.length
-                }{" "}
+                {displayedProducts.length}{" "}
                 results
               </div>
             )}
 
           {!submittedSearch &&
-            category !==
-              "All" &&
-            !loadingCategory && (
+            category !== "All" &&
+            !loadingCategory &&
+            displayedProducts.length >
+              0 && (
               <div className="product-count">
-                {
-                  displayedProducts.length
-                }{" "}
+                {displayedProducts.length}{" "}
                 products
               </div>
             )}
@@ -2405,20 +2930,9 @@ export default function Home() {
           </div>
         )}
 
-        {/*
-          IMPORTANT:
-          Once the first homepage products arrive,
-          loadingHome becomes false and the products
-          stay visible while more products continue
-          loading in the background.
-        */}
-        {loadingCategory ||
-        searching ||
-        (
-          loadingHome &&
-          displayedProducts.length ===
-            0
-        ) ? (
+        {showLoading &&
+        displayedProducts.length ===
+          0 ? (
           <div className="loading">
             <div className="spinner" />
 
@@ -2469,25 +2983,15 @@ export default function Home() {
                 <button
                   key={item}
                   onClick={() => {
-                    setCategory(
+                    selectCategory(
                       item
                     );
 
-                    setSubmittedSearch(
-                      ""
-                    );
-
-                    setSearch(
-                      ""
-                    );
-
-                    window.scrollTo(
-                      {
-                        top: 0,
-                        behavior:
-                          "smooth",
-                      }
-                    );
+                    window.scrollTo({
+                      top: 0,
+                      behavior:
+                        "smooth",
+                    });
                   }}
                 >
                   {item}
@@ -2504,6 +3008,45 @@ export default function Home() {
           reserved.
         </div>
       </footer>
+
+      {/* =====================================================
+          MARLOW ASSISTANT BUTTON
+      ===================================================== */}
+
+      <button
+        className="assistant-launcher"
+        onClick={() =>
+          setAssistantOpen(
+            (open) => !open
+          )
+        }
+        aria-label="Open Marlow Assistant"
+      >
+        <span className="assistant-icon">
+          ✦
+        </span>
+
+        <span>
+          Marlow Assistant
+        </span>
+      </button>
+
+      {assistantOpen && (
+        <MarlowAssistant
+          onSearch={(query) => {
+            setAssistantOpen(false);
+            setSearch(query);
+            performSearch(query);
+          }}
+          onCategory={(item) => {
+            setAssistantOpen(false);
+            selectCategory(item);
+          }}
+          onClose={() =>
+            setAssistantOpen(false)
+          }
+        />
+      )}
 
       <ProductModal
         product={
@@ -2523,9 +3066,7 @@ export default function Home() {
         <CartDrawer
           cart={cart}
           onClose={() =>
-            setCartOpen(
-              false
-            )
+            setCartOpen(false)
           }
           onRemove={
             removeFromCart
@@ -2540,9 +3081,7 @@ export default function Home() {
         <AccountModal
           account={account}
           onClose={() =>
-            setAccountOpen(
-              false
-            )
+            setAccountOpen(false)
           }
           onCreateAccount={
             handleAccountSubmit
@@ -2595,11 +3134,8 @@ export default function Home() {
             255,
             0.96
           );
-          border-bottom: 1px solid
-            #e5e5e5;
-          backdrop-filter: blur(
-            12px
-          );
+          border-bottom: 1px solid #e5e5e5;
+          backdrop-filter: blur(12px);
         }
 
         .header-inner {
@@ -2628,8 +3164,7 @@ export default function Home() {
           background: #f2f2f2;
           border-radius: 999px;
           overflow: hidden;
-          border: 1px solid
-            #dedede;
+          border: 1px solid #dedede;
         }
 
         .search-form input {
@@ -2681,15 +3216,20 @@ export default function Home() {
           font-size: 11px;
         }
 
+        /* =====================================================
+           FULL WIDTH CATEGORY BAR
+        ===================================================== */
+
         .category-bar {
+          width: 100%;
           background: white;
-          border-bottom: 1px solid
-            #e5e5e5;
+          border-bottom: 1px solid #e5e5e5;
         }
 
         .category-inner {
-          max-width: 1500px;
-          margin: 0 auto;
+          width: 100%;
+          max-width: none;
+          margin: 0;
           padding: 10px 24px;
           display: flex;
           gap: 8px;
@@ -2697,13 +3237,15 @@ export default function Home() {
         }
 
         .category-button {
-          border: 1px solid
-            #ddd;
+          flex: 1 1 0;
+          min-width: 0;
+          border: 1px solid #ddd;
           background: white;
           border-radius: 999px;
-          padding: 9px 16px;
+          padding: 10px 12px;
           white-space: nowrap;
           font-weight: 600;
+          text-align: center;
         }
 
         .category-button.active {
@@ -2789,8 +3331,7 @@ export default function Home() {
           letter-spacing: -2px;
         }
 
-        .section-heading
-          .eyebrow {
+        .section-heading .eyebrow {
           color: #666;
           margin-bottom: 7px;
         }
@@ -2812,8 +3353,7 @@ export default function Home() {
 
         .product-card {
           background: white;
-          border: 1px solid
-            #e7e7e7;
+          border: 1px solid #e7e7e7;
           border-radius: 18px;
           overflow: hidden;
           min-width: 0;
@@ -2823,9 +3363,7 @@ export default function Home() {
         }
 
         .product-card:hover {
-          transform: translateY(
-            -3px
-          );
+          transform: translateY(-3px);
           box-shadow:
             0 12px 35px
               rgba(
@@ -2903,8 +3441,7 @@ export default function Home() {
           padding: 80px 20px;
           text-align: center;
           background: white;
-          border: 1px solid
-            #e5e5e5;
+          border: 1px solid #e5e5e5;
           border-radius: 20px;
         }
 
@@ -2922,18 +3459,15 @@ export default function Home() {
           width: 36px;
           height: 36px;
           border-radius: 50%;
-          border: 4px solid
-            #ddd;
+          border: 4px solid #ddd;
           border-top-color: #111;
-          animation: spin
-            0.8s linear infinite;
+          animation:
+            spin 0.8s linear infinite;
         }
 
         @keyframes spin {
           to {
-            transform: rotate(
-              360deg
-            );
+            transform: rotate(360deg);
           }
         }
 
@@ -2941,11 +3475,14 @@ export default function Home() {
           margin-bottom: 20px;
           padding: 14px 16px;
           background: #fff;
-          border: 1px solid
-            #ddd;
+          border: 1px solid #ddd;
           border-radius: 12px;
           color: #555;
         }
+
+        /* =====================================================
+           MODALS
+        ===================================================== */
 
         .modal-backdrop,
         .cart-backdrop,
@@ -3054,6 +3591,10 @@ export default function Home() {
           line-height: 1;
         }
 
+        /* =====================================================
+           CART
+        ===================================================== */
+
         .cart-backdrop {
           justify-content: flex-end;
           padding: 0;
@@ -3083,8 +3624,7 @@ export default function Home() {
           align-items: center;
           justify-content: space-between;
           padding: 22px;
-          border-bottom: 1px solid
-            #eee;
+          border-bottom: 1px solid #eee;
         }
 
         .cart-header h2 {
@@ -3101,8 +3641,7 @@ export default function Home() {
           display: flex;
           gap: 12px;
           padding: 12px 0;
-          border-bottom: 1px solid
-            #eee;
+          border-bottom: 1px solid #eee;
         }
 
         .cart-item img {
@@ -3134,8 +3673,7 @@ export default function Home() {
         }
 
         .cart-summary {
-          border-top: 1px solid
-            #eee;
+          border-top: 1px solid #eee;
           padding: 20px;
         }
 
@@ -3175,6 +3713,10 @@ export default function Home() {
           font-size: 45px;
           margin-bottom: 10px;
         }
+
+        /* =====================================================
+           ACCOUNT
+        ===================================================== */
 
         .account-backdrop {
           z-index: 110;
@@ -3222,8 +3764,7 @@ export default function Home() {
 
         .account-form input {
           width: 100%;
-          border: 1px solid
-            #ddd;
+          border: 1px solid #ddd;
           border-radius: 12px;
           padding: 14px 15px;
           outline: none;
@@ -3272,6 +3813,173 @@ export default function Home() {
           color: #666;
         }
 
+        /* =====================================================
+           MARLOW ASSISTANT
+        ===================================================== */
+
+        .assistant-launcher {
+          position: fixed;
+          right: 22px;
+          bottom: 22px;
+          z-index: 90;
+          display: flex;
+          align-items: center;
+          gap: 9px;
+          border: 0;
+          border-radius: 999px;
+          padding: 13px 18px;
+          background: #111;
+          color: white;
+          font-weight: 800;
+          box-shadow:
+            0 12px 35px
+              rgba(
+                0,
+                0,
+                0,
+                0.2
+              );
+        }
+
+        .assistant-icon {
+          display: inline-flex;
+          width: 25px;
+          height: 25px;
+          align-items: center;
+          justify-content: center;
+          border-radius: 50%;
+          background: white;
+          color: #111;
+        }
+
+        .assistant-panel {
+          position: fixed;
+          right: 22px;
+          bottom: 80px;
+          z-index: 91;
+          width: min(
+            390px,
+            calc(100vw - 30px)
+          );
+          height: min(
+            560px,
+            calc(100vh - 110px)
+          );
+          display: flex;
+          flex-direction: column;
+          background: white;
+          border: 1px solid #ddd;
+          border-radius: 22px;
+          overflow: hidden;
+          box-shadow:
+            0 25px 70px
+              rgba(
+                0,
+                0,
+                0,
+                0.22
+              );
+        }
+
+        .assistant-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 17px;
+          background: #111;
+          color: white;
+        }
+
+        .assistant-header div {
+          display: flex;
+          flex-direction: column;
+          gap: 3px;
+        }
+
+        .assistant-header span {
+          font-size: 11px;
+          opacity: 0.65;
+        }
+
+        .assistant-close {
+          border: 0;
+          background: transparent;
+          color: white;
+          font-size: 25px;
+        }
+
+        .assistant-messages {
+          flex: 1;
+          overflow-y: auto;
+          padding: 15px;
+          background: #f7f7f5;
+        }
+
+        .assistant-message {
+          max-width: 85%;
+          margin-bottom: 10px;
+          padding: 11px 13px;
+          border-radius: 14px;
+          background: white;
+          border: 1px solid #e5e5e5;
+          line-height: 1.45;
+          font-size: 14px;
+        }
+
+        .user-message {
+          margin-left: auto;
+          background: #111;
+          color: white;
+          border-color: #111;
+        }
+
+        .assistant-suggestions {
+          display: flex;
+          gap: 7px;
+          overflow-x: auto;
+          padding: 10px 12px;
+          border-top: 1px solid #eee;
+        }
+
+        .assistant-suggestions button {
+          flex: 0 0 auto;
+          border: 1px solid #ddd;
+          background: white;
+          border-radius: 999px;
+          padding: 8px 11px;
+          font-size: 11px;
+          font-weight: 700;
+        }
+
+        .assistant-form {
+          display: flex;
+          padding: 12px;
+          gap: 8px;
+          border-top: 1px solid #eee;
+        }
+
+        .assistant-form input {
+          flex: 1;
+          min-width: 0;
+          border: 1px solid #ddd;
+          border-radius: 999px;
+          padding: 11px 14px;
+          outline: none;
+        }
+
+        .assistant-form button {
+          border: 0;
+          border-radius: 999px;
+          background: #111;
+          color: white;
+          padding: 0 16px;
+          font-weight: 800;
+        }
+
+        /* =====================================================
+           FOOTER
+        ===================================================== */
+
         .footer {
           background: #111;
           color: white;
@@ -3313,11 +4021,14 @@ export default function Home() {
           max-width: 1500px;
           margin: 45px auto 0;
           padding-top: 20px;
-          border-top: 1px solid
-            #333;
+          border-top: 1px solid #333;
           color: #777;
           font-size: 13px;
         }
+
+        /* =====================================================
+           RESPONSIVE
+        ===================================================== */
 
         @media (max-width: 1200px) {
           .product-grid {
@@ -3375,6 +4086,11 @@ export default function Home() {
           .account-modal {
             padding: 35px 25px;
           }
+
+          .category-button {
+            flex: 0 0 auto;
+            min-width: 105px;
+          }
         }
 
         @media (max-width: 600px) {
@@ -3389,6 +4105,10 @@ export default function Home() {
 
           .category-inner {
             padding: 8px 15px;
+          }
+
+          .category-button {
+            min-width: 100px;
           }
 
           .hero {
@@ -3448,6 +4168,18 @@ export default function Home() {
 
           .account-modal h2 {
             font-size: 32px;
+          }
+
+          .assistant-launcher {
+            right: 12px;
+            bottom: 12px;
+            padding: 11px 14px;
+            font-size: 13px;
+          }
+
+          .assistant-panel {
+            right: 12px;
+            bottom: 70px;
           }
         }
       `}</style>
