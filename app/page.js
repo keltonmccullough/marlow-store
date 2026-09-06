@@ -769,10 +769,6 @@ async function fetchAllCJPages(
 
     page += 1;
 
-    /*
-      Small pause between pages prevents
-      hammering the CJ endpoint.
-    */
     if (hasMore) {
       await sleep(
         250,
@@ -976,73 +972,80 @@ async function fetchCategoryProducts(
   signal,
   onProducts
 ) {
-  const query =
-    CATEGORY_SEARCHES[category] ||
-    category;
+  const queries =
+    CATEGORY_VARIANTS[
+      category
+    ] || [
+      CATEGORY_SEARCHES[
+        category
+      ],
+    ];
 
   let products = [];
 
-  try {
-    await fetchAllCJPages(
-      query,
-      signal,
-      (batch) => {
-        const converted =
-          batch
-            .map(
-              (
-                product,
-                index
-              ) =>
-                convertSupplierProduct(
-                  product,
-                  products.length +
-                    index
-                )
-            )
-            .filter(Boolean);
-
-        products =
-          uniqueProducts([
-            ...products,
-            ...converted,
-          ]);
-
-        const categorized =
-          products.filter(
-            (product) =>
-              matchesCategory(
-                product,
-                category
-              )
-          );
-
-        const displayProducts =
-          categorized.length
-            ? categorized
-            : products;
-
-        onProducts(
-          sortProducts(
-            displayProducts
-          )
-        );
-      }
-    );
-  } catch (error) {
-    if (
-      error?.name ===
-      "AbortError"
-    ) {
-      throw error;
+  for (const query of queries) {
+    if (signal?.aborted) {
+      throw new DOMException(
+        "Request cancelled",
+        "AbortError"
+      );
     }
 
-    console.error(
-      `Category query failed: ${query}`,
-      error
-    );
+    try {
+      await fetchAllCJPages(
+        query,
+        signal,
+        (batch) => {
+          const converted =
+            batch
+              .map(
+                (
+                  product,
+                  index
+                ) =>
+                  convertSupplierProduct(
+                    product,
+                    products.length +
+                      index
+                  )
+              )
+              .filter(Boolean);
 
-    throw error;
+          products =
+            uniqueProducts([
+              ...products,
+              ...converted,
+            ]);
+
+          const categorized =
+            products.filter(
+              (product) =>
+                matchesCategory(
+                  product,
+                  category
+                )
+            );
+
+          onProducts(
+            sortProducts(
+              categorized
+            )
+          );
+        }
+      );
+    } catch (error) {
+      if (
+        error?.name ===
+        "AbortError"
+      ) {
+        throw error;
+      }
+
+      console.error(
+        `Category query failed: ${query}`,
+        error
+      );
+    }
   }
 
   const categorized =
@@ -1056,9 +1059,7 @@ async function fetchCategoryProducts(
 
   return sortProducts(
     uniqueProducts(
-      categorized.length
-        ? categorized
-        : products
+      categorized
     )
   );
 }
@@ -1882,11 +1883,6 @@ export default function Home() {
     setAssistantOpen,
   ] = useState(false);
 
-  /*
-    These controllers are the important fix.
-    Whenever the customer starts a search/category,
-    the homepage background requests are cancelled.
-  */
   const homeController =
     useRef(null);
 
@@ -2328,11 +2324,6 @@ export default function Home() {
 
     const actualQuery =
       normalizeSearchQuery(
-        cleanQuery
-      );
-
-    const sortMode =
-      getSearchSortMode(
         cleanQuery
       );
 
@@ -2995,10 +2986,6 @@ export default function Home() {
         </div>
       </footer>
 
-      {/* =====================================================
-          MARLOW ASSISTANT BUTTON
-      ===================================================== */}
-
       <button
         className="assistant-launcher"
         onClick={() =>
@@ -3201,10 +3188,6 @@ export default function Home() {
           color: white;
           font-size: 11px;
         }
-
-        /* =====================================================
-           FULL WIDTH CATEGORY BAR
-        ===================================================== */
 
         .category-bar {
           width: 100%;
@@ -3466,10 +3449,6 @@ export default function Home() {
           color: #555;
         }
 
-        /* =====================================================
-           MODALS
-        ===================================================== */
-
         .modal-backdrop,
         .cart-backdrop,
         .account-backdrop {
@@ -3576,10 +3555,6 @@ export default function Home() {
           font-size: 26px;
           line-height: 1;
         }
-
-        /* =====================================================
-           CART
-        ===================================================== */
 
         .cart-backdrop {
           justify-content: flex-end;
@@ -3700,10 +3675,6 @@ export default function Home() {
           margin-bottom: 10px;
         }
 
-        /* =====================================================
-           ACCOUNT
-        ===================================================== */
-
         .account-backdrop {
           z-index: 110;
         }
@@ -3798,10 +3769,6 @@ export default function Home() {
         .account-info span {
           color: #666;
         }
-
-        /* =====================================================
-           MARLOW ASSISTANT
-        ===================================================== */
 
         .assistant-launcher {
           position: fixed;
@@ -3962,10 +3929,6 @@ export default function Home() {
           font-weight: 800;
         }
 
-        /* =====================================================
-           FOOTER
-        ===================================================== */
-
         .footer {
           background: #111;
           color: white;
@@ -4011,10 +3974,6 @@ export default function Home() {
           color: #777;
           font-size: 13px;
         }
-
-        /* =====================================================
-           RESPONSIVE
-        ===================================================== */
 
         @media (max-width: 1200px) {
           .product-grid {
