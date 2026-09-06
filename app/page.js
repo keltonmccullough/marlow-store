@@ -4,6 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 
 const HOME_PRODUCT_LIMIT = 375;
 const PAGE_SIZE = 100;
+const HOME_CACHE_KEY = "marlow-home-products";
+const HOME_CACHE_TIME_KEY = "marlow-home-products-time";
+const HOME_CACHE_MAX_AGE = 10 * 60 * 1000;
 
 const CATEGORIES = [
   "All",
@@ -468,13 +471,19 @@ async function fetchCJPage(query, page) {
     );
   }
 
+  if (data.success === false) {
+    throw new Error(
+      data.error ||
+        "The product catalog could not be loaded."
+    );
+  }
+
   return data;
 }
 
 /* =========================================================
    GET ALL CJ PAGES
-   Used by SEARCH AND CATEGORY RESULTS.
-   There is NO artificial product limit.
+   SEARCH AND CATEGORY ONLY
 ========================================================= */
 
 async function fetchAllCJPages(query) {
@@ -517,10 +526,6 @@ async function fetchAllCJPages(query) {
       newProductsOnPage += 1;
     }
 
-    /*
-     * If CJ keeps returning pages but none of the
-     * products are new, stop instead of getting stuck.
-     */
     if (
       newProductsOnPage === 0
     ) {
@@ -537,93 +542,166 @@ async function fetchAllCJPages(query) {
 }
 
 /* =========================================================
-   GET ONLY ENOUGH PRODUCTS FOR HOMEPAGE
+   FAST HOMEPAGE LOADER
+
+   IMPORTANT:
+   This does NOT wait for all 375 products.
+
+   Products are sent to the screen immediately as
+   each CJ page arrives.
+
+   The loader continues in the background until
+   375 unique usable products have been collected.
 ========================================================= */
 
-async function fetchCJPagesUntilLimit(
-  query,
-  limit,
-  existingProducts = []
+async function loadHomepageProducts(
+  queries,
+  target,
+  onProducts
 ) {
-  let page = 1;
+  let collected = [];
+  const seen = new Set();
 
-  const collected =
-    uniqueProducts(
-      existingProducts
-    );
-
-  const seen = new Set(
-    collected.map(
-      getUniqueProductKey
-    )
-  );
-
-  while (
-    collected.length <
-      limit &&
-    page <= 1000
-  ) {
-    const data =
-      await fetchCJPage(
-        query,
-        page
-      );
-
-    const batch =
-      Array.isArray(data?.products)
-        ? data.products
-        : [];
-
-    if (batch.length === 0) {
+  for (const query of queries) {
+    if (
+      collected.length >=
+      target
+    ) {
       break;
     }
 
-    let newProductsOnPage = 0;
+    let page = 1;
+    let hasMore = true;
 
-    for (const product of batch) {
-      const key =
-        getUniqueProductKey(
+    while (
+      hasMore &&
+      collected.length <
+        target &&
+      page <= 1000
+    ) {
+      const data =
+        await fetchCJPage(
+          query,
+          page
+        );
+
+      const batch =
+        Array.isArray(
+          data?.products
+        )
+          ? data.products
+          : [];
+
+      if (!batch.length) {
+        break;
+      }
+
+      let added = false;
+
+      for (const product of batch) {
+        const key =
+          getUniqueProductKey(
+            product
+          );
+
+        if (seen.has(key)) {
+          continue;
+        }
+
+        seen.add(key);
+
+        const converted =
+          convertSupplierProduct(
+            product,
+            collected.length
+          );
+
+        if (!converted) {
+          continue;
+        }
+
+        collected.push(
           product
         );
 
-      if (seen.has(key)) {
-        continue;
+        added = true;
       }
 
-      seen.add(key);
-      collected.push(product);
-      newProductsOnPage += 1;
+      /*
+        Convert everything collected so far and
+        immediately send it to the page.
+      */
+      const converted =
+        collected
+          .map(
+            (
+              product,
+              index
+            ) =>
+              convertSupplierProduct(
+                product,
+                index
+              )
+          )
+          .filter(Boolean);
+
+      const uniqueConverted =
+        uniqueProducts(
+          converted
+        );
+
+      onProducts(
+        sortProducts(
+          uniqueConverted
+        ).slice(
+          0,
+          target
+        )
+      );
 
       if (
         collected.length >=
-        limit
+        target
       ) {
         break;
       }
-    }
 
-    /*
-     * Prevent a broken API response from
-     * causing an endless loop.
-     */
-    if (
-      newProductsOnPage === 0
-    ) {
-      break;
-    }
+      hasMore =
+        Boolean(data?.hasMore);
 
-    if (
-      !data?.hasMore ||
-      batch.length <
-        PAGE_SIZE
-    ) {
-      break;
-    }
+      if (
+        !added &&
+        !hasMore
+      ) {
+        break;
+      }
 
-    page += 1;
+      page += 1;
+    }
   }
 
-  return collected;
+  const finalConverted =
+    collected
+      .map(
+        (
+          product,
+          index
+        ) =>
+          convertSupplierProduct(
+            product,
+            index
+          )
+      )
+      .filter(Boolean);
+
+  return sortProducts(
+    uniqueProducts(
+      finalConverted
+    )
+  ).slice(
+    0,
+    target
+  );
 }
 
 /* =========================================================
@@ -671,7 +749,10 @@ async function fetchCategoryProducts(
   const converted =
     products
       .map(
-        (product, index) =>
+        (
+          product,
+          index
+        ) =>
           convertSupplierProduct(
             product,
             index
@@ -1431,23 +1512,73 @@ export default function Home() {
   }, [cart]);
 
   /* =======================================================
-     HOME PAGE
+     FAST HOMEPAGE LOADING
      
-     IMPORTANT:
-     The homepage does NOT scan the entire CJ catalog.
-     
-     It collects enough unique products to fill the
-     homepage display, then stops.
-     
-     The 375 number is NOT displayed to customers.
+     The FIRST available products are displayed immediately.
+     The rest continue loading in the background.
   ======================================================= */
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadHomeProducts() {
-      setLoadingHome(true);
       setError("");
+
+      /*
+        Try the browser cache first.
+        This makes returning visitors much faster.
+      */
+      try {
+        const cached =
+          sessionStorage.getItem(
+            HOME_CACHE_KEY
+          );
+
+        const cachedTime =
+          Number(
+            sessionStorage.getItem(
+              HOME_CACHE_TIME_KEY
+            ) || "0"
+          );
+
+        if (
+          cached &&
+          cachedTime &&
+          Date.now() -
+            cachedTime <
+            HOME_CACHE_MAX_AGE
+        ) {
+          const parsed =
+            JSON.parse(
+              cached
+            );
+
+          if (
+            Array.isArray(
+              parsed
+            ) &&
+            parsed.length
+          ) {
+            setHomeProducts(
+              parsed.slice(
+                0,
+                HOME_PRODUCT_LIMIT
+              )
+            );
+
+            setLoadingHome(
+              false
+            );
+          }
+        }
+      } catch (
+        cacheError
+      ) {
+        console.error(
+          "Marlow homepage cache error:",
+          cacheError
+        );
+      }
 
       const queries = [
         "popular products",
@@ -1464,75 +1595,111 @@ export default function Home() {
         "tools",
       ];
 
-      let collected = [];
-
       try {
-        for (const query of queries) {
-          if (cancelled) {
-            return;
-          }
-
-          /*
-           * Only fetch enough pages to reach the
-           * homepage collection size.
-           */
-          collected =
-            await fetchCJPagesUntilLimit(
-              query,
-              HOME_PRODUCT_LIMIT,
-              collected
-            );
-
-          if (
-            collected.length >=
-            HOME_PRODUCT_LIMIT
-          ) {
-            break;
-          }
-        }
-
-        const converted =
-          collected
-            .map(
-              (
-                product,
-                index
-              ) =>
-                convertSupplierProduct(
-                  product,
-                  index
-                )
-            )
-            .filter(
-              Boolean
-            );
-
-        const unique =
-          uniqueProducts(
-            converted
-          );
-
         const finalProducts =
-          sortProducts(
-            unique
-          ).slice(
-            0,
-            HOME_PRODUCT_LIMIT
+          await loadHomepageProducts(
+            queries,
+            HOME_PRODUCT_LIMIT,
+            (products) => {
+              if (
+                cancelled
+              ) {
+                return;
+              }
+
+              /*
+                THIS IS THE IMPORTANT PART:
+                Products are displayed immediately.
+              */
+              if (
+                products.length
+              ) {
+                setHomeProducts(
+                  products
+                );
+
+                setLoadingHome(
+                  false
+                );
+
+                /*
+                  Save the newest product
+                  collection for a faster
+                  return visit.
+                */
+                try {
+                  sessionStorage.setItem(
+                    HOME_CACHE_KEY,
+                    JSON.stringify(
+                      products
+                    )
+                  );
+
+                  sessionStorage.setItem(
+                    HOME_CACHE_TIME_KEY,
+                    String(
+                      Date.now()
+                    )
+                  );
+                } catch (
+                  cacheError
+                ) {
+                  console.error(
+                    "Could not cache homepage products:",
+                    cacheError
+                  );
+                }
+              }
+            }
           );
 
-        if (!cancelled) {
+        if (
+          !cancelled &&
+          finalProducts.length
+        ) {
           setHomeProducts(
             finalProducts
           );
 
-          if (
-            finalProducts.length ===
-            0
+          setLoadingHome(
+            false
+          );
+
+          try {
+            sessionStorage.setItem(
+              HOME_CACHE_KEY,
+              JSON.stringify(
+                finalProducts
+              )
+            );
+
+            sessionStorage.setItem(
+              HOME_CACHE_TIME_KEY,
+              String(
+                Date.now()
+              )
+            );
+          } catch (
+            cacheError
           ) {
-            setError(
-              "We couldn't load the live product catalog right now."
+            console.error(
+              "Could not save homepage cache:",
+              cacheError
             );
           }
+        }
+
+        if (
+          !cancelled &&
+          !finalProducts.length
+        ) {
+          setError(
+            "We couldn't load the live product catalog right now."
+          );
+
+          setLoadingHome(
+            false
+          );
         }
       } catch (err) {
         console.error(
@@ -1540,15 +1707,15 @@ export default function Home() {
           err
         );
 
-        if (!cancelled) {
-          setHomeProducts([]);
-
+        if (
+          !cancelled &&
+          homeProducts.length ===
+            0
+        ) {
           setError(
             "We couldn't load the live product catalog right now."
           );
-        }
-      } finally {
-        if (!cancelled) {
+
           setLoadingHome(
             false
           );
@@ -1565,9 +1732,7 @@ export default function Home() {
 
   /* =======================================================
      CATEGORY PAGE
-     
-     Categories still load ALL available matching results.
-  ======================================================= */
+======================================================= */
 
   useEffect(() => {
     let cancelled = false;
@@ -1634,10 +1799,7 @@ export default function Home() {
 
   /* =======================================================
      SEARCH
-     
-     Search still loads ALL matching CJ pages.
-     There is NO 375-result cap here.
-  ======================================================= */
+======================================================= */
 
   async function performSearch(
     query
@@ -1718,7 +1880,7 @@ export default function Home() {
 
   /* =======================================================
      ACCOUNT
-  ======================================================= */
+======================================================= */
 
   function handleAccountSubmit(
     data
@@ -1741,10 +1903,6 @@ export default function Home() {
     ) {
       return;
     }
-
-    /*
-     * SIGN IN
-     */
 
     if (data.signingIn) {
       try {
@@ -1799,10 +1957,6 @@ export default function Home() {
         return;
       }
     }
-
-    /*
-     * CREATE ACCOUNT
-     */
 
     const name =
       String(
@@ -1860,7 +2014,7 @@ export default function Home() {
 
   /* =======================================================
      CART
-  ======================================================= */
+======================================================= */
 
   function addToCart(
     product
@@ -1941,7 +2095,7 @@ export default function Home() {
 
   /* =======================================================
      DISPLAYED PRODUCTS
-  ======================================================= */
+======================================================= */
 
   const displayedProducts =
     useMemo(() => {
@@ -1980,7 +2134,7 @@ export default function Home() {
 
   /* =======================================================
      RENDER
-  ======================================================= */
+======================================================= */
 
   return (
     <main className="site">
@@ -2251,9 +2405,20 @@ export default function Home() {
           </div>
         )}
 
-        {loadingHome ||
-        loadingCategory ||
-        searching ? (
+        {/*
+          IMPORTANT:
+          Once the first homepage products arrive,
+          loadingHome becomes false and the products
+          stay visible while more products continue
+          loading in the background.
+        */}
+        {loadingCategory ||
+        searching ||
+        (
+          loadingHome &&
+          displayedProducts.length ===
+            0
+        ) ? (
           <div className="loading">
             <div className="spinner" />
 
