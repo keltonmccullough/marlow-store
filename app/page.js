@@ -158,9 +158,12 @@ function getSupplierName(product) {
     product?.productName ||
     product?.name ||
     product?.title ||
+    product?.nameEn ||
+    product?.productNameEn ||
     product?.product?.productName ||
     product?.product?.name ||
     product?.product?.title ||
+    product?.product?.nameEn ||
     "Marlow Product"
   );
 }
@@ -168,9 +171,11 @@ function getSupplierName(product) {
 function getSupplierImage(product) {
   return (
     product?.productImage ||
+    product?.bigImage ||
     product?.image ||
     product?.imageUrl ||
     product?.product?.productImage ||
+    product?.product?.bigImage ||
     product?.product?.image ||
     product?.product?.imageUrl ||
     product?.skuImage ||
@@ -182,10 +187,14 @@ function getSupplierImage(product) {
 function getSupplierCost(product) {
   const possiblePrices = [
     product?.sellPrice,
+    product?.nowPrice,
     product?.price,
     product?.cost,
     product?.productPrice,
+    product?.minPrice,
+    product?.salePrice,
     product?.product?.sellPrice,
+    product?.product?.nowPrice,
     product?.product?.price,
     product?.product?.cost,
     product?.product?.productPrice,
@@ -207,6 +216,7 @@ function getCJProductId(product) {
     product?.pid ||
     product?.productId ||
     product?.id ||
+    product?.product_id ||
     product?.product?.pid ||
     product?.product?.productId ||
     product?.product?.id ||
@@ -214,13 +224,6 @@ function getCJProductId(product) {
   );
 }
 
-/*
- * This is the main duplicate-protection system.
- *
- * If CJ gives us a real product ID, that ID is always preferred.
- * If a product does not contain an ID, name + image is used as
- * a fallback fingerprint.
- */
 function getUniqueProductKey(product) {
   const cjId = getCJProductId(product);
 
@@ -310,12 +313,6 @@ function inferMarlowCategory(product) {
     " " +
     (product?.product?.category || "")
   ).toLowerCase();
-
-  /*
-   * Check clothing before electronics because products such as
-   * "smart watch clothing..." should still be classified by the
-   * strongest clothing terms when applicable.
-   */
 
   if (
     /shirt|dress|pants|jeans|jacket|coat|hoodie|sweater|clothing|apparel|skirt|bra|lingerie|shoe|sneaker|sock|clothes|fashion|blouse|shorts|underwear|vest|cardigan|activewear/.test(
@@ -419,8 +416,13 @@ function convertSupplierProduct(product, index = 0) {
 
 function sortProducts(products) {
   return [...products].sort((a, b) => {
-    const aName = String(a?.name || "").toLowerCase();
-    const bName = String(b?.name || "").toLowerCase();
+    const aName = String(
+      a?.name || ""
+    ).toLowerCase();
+
+    const bName = String(
+      b?.name || ""
+    ).toLowerCase();
 
     return aName.localeCompare(bName);
   });
@@ -461,29 +463,20 @@ async function fetchCJPage(query, page) {
   const data = await response.json();
 
   if (!data || typeof data !== "object") {
-    throw new Error("Invalid catalog response.");
+    throw new Error(
+      "Invalid catalog response."
+    );
   }
 
   return data;
 }
 
-/*
- * IMPORTANT:
- *
- * There is NO artificial maxProducts limit here.
- * There is NO artificial maxPages limit here.
- *
- * CJ controls when the catalog is exhausted through hasMore.
- *
- * This means:
- *
- * page 1
- * page 2
- * page 3
- * page 4
- * ...
- * until CJ says there are no more pages.
- */
+/* =========================================================
+   GET ALL CJ PAGES
+   Used by SEARCH AND CATEGORY RESULTS.
+   There is NO artificial product limit.
+========================================================= */
+
 async function fetchAllCJPages(query) {
   let page = 1;
   let hasMore = true;
@@ -492,21 +485,28 @@ async function fetchAllCJPages(query) {
   const seen = new Set();
 
   while (hasMore) {
-    const data = await fetchCJPage(
-      query,
-      page
-    );
+    const data =
+      await fetchCJPage(
+        query,
+        page
+      );
 
-    const batch = Array.isArray(data?.products)
-      ? data.products
-      : [];
+    const batch =
+      Array.isArray(data?.products)
+        ? data.products
+        : [];
 
     if (batch.length === 0) {
       break;
     }
 
+    let newProductsOnPage = 0;
+
     for (const product of batch) {
-      const key = getUniqueProductKey(product);
+      const key =
+        getUniqueProductKey(
+          product
+        );
 
       if (seen.has(key)) {
         continue;
@@ -514,58 +514,152 @@ async function fetchAllCJPages(query) {
 
       seen.add(key);
       allProducts.push(product);
+      newProductsOnPage += 1;
+    }
+
+    /*
+     * If CJ keeps returning pages but none of the
+     * products are new, stop instead of getting stuck.
+     */
+    if (
+      newProductsOnPage === 0
+    ) {
+      break;
     }
 
     hasMore =
-      Boolean(data?.hasMore) &&
-      batch.length > 0;
+      Boolean(data?.hasMore);
 
     page += 1;
-
-    /*
-     * Prevent a broken API response from creating an
-     * accidental infinite loop.
-     *
-     * This is NOT a product limit.
-     * It only stops if CJ keeps returning the exact
-     * same page forever.
-     */
-    if (page > 1 && batch.length === 0) {
-      break;
-    }
   }
 
   return allProducts;
 }
 
 /* =========================================================
+   GET ONLY ENOUGH PRODUCTS FOR HOMEPAGE
+========================================================= */
+
+async function fetchCJPagesUntilLimit(
+  query,
+  limit,
+  existingProducts = []
+) {
+  let page = 1;
+
+  const collected =
+    uniqueProducts(
+      existingProducts
+    );
+
+  const seen = new Set(
+    collected.map(
+      getUniqueProductKey
+    )
+  );
+
+  while (
+    collected.length <
+      limit &&
+    page <= 1000
+  ) {
+    const data =
+      await fetchCJPage(
+        query,
+        page
+      );
+
+    const batch =
+      Array.isArray(data?.products)
+        ? data.products
+        : [];
+
+    if (batch.length === 0) {
+      break;
+    }
+
+    let newProductsOnPage = 0;
+
+    for (const product of batch) {
+      const key =
+        getUniqueProductKey(
+          product
+        );
+
+      if (seen.has(key)) {
+        continue;
+      }
+
+      seen.add(key);
+      collected.push(product);
+      newProductsOnPage += 1;
+
+      if (
+        collected.length >=
+        limit
+      ) {
+        break;
+      }
+    }
+
+    /*
+     * Prevent a broken API response from
+     * causing an endless loop.
+     */
+    if (
+      newProductsOnPage === 0
+    ) {
+      break;
+    }
+
+    if (
+      !data?.hasMore ||
+      batch.length <
+        PAGE_SIZE
+    ) {
+      break;
+    }
+
+    page += 1;
+  }
+
+  return collected;
+}
+
+/* =========================================================
    CATEGORY LOADING
 ========================================================= */
 
-async function fetchCategoryProducts(category) {
+async function fetchCategoryProducts(
+  category
+) {
   const queries =
-    CATEGORY_VARIANTS[category] || [
-      CATEGORY_SEARCHES[category],
+    CATEGORY_VARIANTS[
+      category
+    ] || [
+      CATEGORY_SEARCHES[
+        category
+      ],
     ];
 
   let products = [];
 
-  /*
-   * Each search variant is exhausted completely.
-   *
-   * Results are combined and deduplicated afterward.
-   */
   for (const query of queries) {
-    if (!query) continue;
+    if (!query) {
+      continue;
+    }
 
     try {
       const results =
-        await fetchAllCJPages(query);
+        await fetchAllCJPages(
+          query
+        );
 
-      products = uniqueProducts([
-        ...products,
-        ...results,
-      ]);
+      products =
+        uniqueProducts([
+          ...products,
+          ...results,
+        ]);
     } catch (error) {
       console.error(
         `Category search failed for ${query}`,
@@ -574,36 +668,41 @@ async function fetchCategoryProducts(category) {
     }
   }
 
-  const converted = products
-    .map((product, index) =>
-      convertSupplierProduct(
-        product,
-        index
+  const converted =
+    products
+      .map(
+        (product, index) =>
+          convertSupplierProduct(
+            product,
+            index
+          )
       )
-    )
-    .filter(Boolean);
+      .filter(Boolean);
 
-  const categorized = converted.filter(
-    (product) =>
-      matchesCategory(
-        product,
-        category
-      )
-  );
+  const categorized =
+    converted.filter(
+      (product) =>
+        matchesCategory(
+          product,
+          category
+        )
+    );
 
-  /*
-   * If the classifier couldn't identify any products,
-   * keep the actual CJ results rather than showing
-   * "no products" incorrectly.
-   */
-  if (categorized.length === 0) {
+  if (
+    categorized.length ===
+    0
+  ) {
     return sortProducts(
-      uniqueProducts(converted)
+      uniqueProducts(
+        converted
+      )
     );
   }
 
   return sortProducts(
-    uniqueProducts(categorized)
+    uniqueProducts(
+      categorized
+    )
   );
 }
 
@@ -649,7 +748,8 @@ function ProductCard({
 
         <div className="product-bottom">
           <strong className="product-price">
-            ${Number(
+            $
+            {Number(
               product.price
             ).toFixed(2)}
           </strong>
@@ -680,11 +780,14 @@ function ProductGrid({
   if (!products.length) {
     return (
       <div className="empty-products">
-        <h3>No products available</h3>
+        <h3>
+          No products available
+        </h3>
 
         <p>
-          Try another category or search
-          for something else.
+          Try another category
+          or search for
+          something else.
         </p>
       </div>
     );
@@ -692,14 +795,16 @@ function ProductGrid({
 
   return (
     <div className="product-grid">
-      {products.map((product) => (
-        <ProductCard
-          key={product.id}
-          product={product}
-          onOpen={onOpen}
-          onAdd={onAdd}
-        />
-      ))}
+      {products.map(
+        (product) => (
+          <ProductCard
+            key={product.id}
+            product={product}
+            onOpen={onOpen}
+            onAdd={onAdd}
+          />
+        )
+      )}
     </div>
   );
 }
@@ -749,10 +854,13 @@ function ProductModal({
             {product.category}
           </span>
 
-          <h2>{product.name}</h2>
+          <h2>
+            {product.name}
+          </h2>
 
           <div className="modal-price">
-            ${Number(
+            $
+            {Number(
               product.price
             ).toFixed(2)}
           </div>
@@ -836,7 +944,9 @@ function AccountModal({
       return;
     }
 
-    if (mode === "create") {
+    if (
+      mode === "create"
+    ) {
       onCreateAccount({
         name: cleanName,
         email: cleanEmail,
@@ -844,13 +954,10 @@ function AccountModal({
       });
 
       setPassword("");
+
       return;
     }
 
-    /*
-     * The parent handles the stored account
-     * and validates the sign-in.
-     */
     onCreateAccount({
       name: "",
       email: cleanEmail,
@@ -901,9 +1008,9 @@ function AccountModal({
             </div>
 
             <p className="account-note">
-              Your Marlow account is available
-              whenever you return to this
-              browser.
+              Your Marlow account is
+              available whenever you
+              return to this browser.
             </p>
 
             <button
@@ -923,27 +1030,35 @@ function AccountModal({
             </span>
 
             <h2>
-              {mode === "create"
+              {mode ===
+              "create"
                 ? "Create your account"
                 : "Sign in to Marlow"}
             </h2>
 
             <p className="account-note">
-              Create an account so you can
-              return to Marlow and access
+              Create an account so
+              you can return to
+              Marlow and access
               your account anytime.
             </p>
 
             <form
               className="account-form"
-              onSubmit={handleSubmit}
+              onSubmit={
+                handleSubmit
+              }
             >
-              {mode === "create" && (
+              {mode ===
+                "create" && (
                 <input
                   value={name}
-                  onChange={(event) =>
+                  onChange={(
+                    event
+                  ) =>
                     setName(
-                      event.target.value
+                      event.target
+                        .value
                     )
                   }
                   placeholder="Full name"
@@ -956,7 +1071,8 @@ function AccountModal({
                 value={email}
                 onChange={(event) =>
                   setEmail(
-                    event.target.value
+                    event.target
+                      .value
                   )
                 }
                 placeholder="Email address"
@@ -968,12 +1084,14 @@ function AccountModal({
                 value={password}
                 onChange={(event) =>
                   setPassword(
-                    event.target.value
+                    event.target
+                      .value
                   )
                 }
                 placeholder="Password"
                 autoComplete={
-                  mode === "create"
+                  mode ===
+                  "create"
                     ? "new-password"
                     : "current-password"
                 }
@@ -989,7 +1107,8 @@ function AccountModal({
                 type="submit"
                 className="modal-add-button"
               >
-                {mode === "create"
+                {mode ===
+                "create"
                   ? "Create Account"
                   : "Sign In"}
               </button>
@@ -998,15 +1117,20 @@ function AccountModal({
             <button
               className="account-switch"
               onClick={() => {
-                setAccountError("");
+                setAccountError(
+                  ""
+                );
+
                 setMode(
-                  mode === "create"
+                  mode ===
+                    "create"
                     ? "signin"
                     : "create"
                 );
               }}
             >
-              {mode === "create"
+              {mode ===
+              "create"
                 ? "Already have an account? Sign in"
                 : "Need an account? Create one"}
             </button>
@@ -1048,7 +1172,9 @@ function CartDrawer({
         }
       >
         <div className="cart-header">
-          <h2>Your Cart</h2>
+          <h2>
+            Your Cart
+          </h2>
 
           <button
             className="close-button"
@@ -1069,53 +1195,65 @@ function CartDrawer({
             </h3>
 
             <p>
-              Add something you love
-              from Marlow.
+              Add something you
+              love from Marlow.
             </p>
           </div>
         ) : (
           <>
             <div className="cart-items">
-              {cart.map((item) => (
-                <div
-                  className="cart-item"
-                  key={item.id}
-                >
-                  <img
-                    src={item.image}
-                    alt={item.name}
-                  />
-
-                  <div className="cart-item-info">
-                    <strong>
-                      {item.name}
-                    </strong>
-
-                    <span>
-                      $
-                      {Number(
-                        item.price
-                      ).toFixed(2)}
-                    </span>
-
-                    <span>
-                      Quantity:{" "}
-                      {item.quantity}
-                    </span>
-
-                    <button
-                      className="remove-button"
-                      onClick={() =>
-                        onRemove(
-                          item.id
-                        )
+              {cart.map(
+                (item) => (
+                  <div
+                    className="cart-item"
+                    key={item.id}
+                  >
+                    <img
+                      src={
+                        item.image
                       }
-                    >
-                      Remove
-                    </button>
+                      alt={
+                        item.name
+                      }
+                    />
+
+                    <div className="cart-item-info">
+                      <strong>
+                        {
+                          item.name
+                        }
+                      </strong>
+
+                      <span>
+                        $
+                        {Number(
+                          item.price
+                        ).toFixed(
+                          2
+                        )}
+                      </span>
+
+                      <span>
+                        Quantity:{" "}
+                        {
+                          item.quantity
+                        }
+                      </span>
+
+                      <button
+                        className="remove-button"
+                        onClick={() =>
+                          onRemove(
+                            item.id
+                          )
+                        }
+                      >
+                        Remove
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              )}
             </div>
 
             <div className="cart-summary">
@@ -1133,9 +1271,10 @@ function CartDrawer({
               </div>
 
               <p className="checkout-note">
-                Tax and shipping will
-                be calculated during
-                secure checkout.
+                Tax and shipping
+                will be calculated
+                during secure
+                checkout.
               </p>
 
               <button
@@ -1227,9 +1366,15 @@ export default function Home() {
 
       if (savedCart) {
         const parsed =
-          JSON.parse(savedCart);
+          JSON.parse(
+            savedCart
+          );
 
-        if (Array.isArray(parsed)) {
+        if (
+          Array.isArray(
+            parsed
+          )
+        ) {
           setCart(parsed);
         }
       }
@@ -1241,7 +1386,9 @@ export default function Home() {
 
       if (savedAccount) {
         const parsed =
-          JSON.parse(savedAccount);
+          JSON.parse(
+            savedAccount
+          );
 
         if (
           parsed &&
@@ -1251,7 +1398,9 @@ export default function Home() {
           setAccount(parsed);
         }
       }
-    } catch (storageError) {
+    } catch (
+      storageError
+    ) {
       console.error(
         "Marlow local storage error:",
         storageError
@@ -1267,9 +1416,13 @@ export default function Home() {
     try {
       localStorage.setItem(
         "marlow-cart",
-        JSON.stringify(cart)
+        JSON.stringify(
+          cart
+        )
       );
-    } catch (storageError) {
+    } catch (
+      storageError
+    ) {
       console.error(
         "Could not save Marlow cart:",
         storageError
@@ -1278,7 +1431,15 @@ export default function Home() {
   }, [cart]);
 
   /* =======================================================
-     HOME PAGE — GET 375 UNIQUE PRODUCTS
+     HOME PAGE
+     
+     IMPORTANT:
+     The homepage does NOT scan the entire CJ catalog.
+     
+     It collects enough unique products to fill the
+     homepage display, then stops.
+     
+     The 375 number is NOT displayed to customers.
   ======================================================= */
 
   useEffect(() => {
@@ -1289,6 +1450,7 @@ export default function Home() {
       setError("");
 
       const queries = [
+        "popular products",
         "electronics",
         "phone accessories",
         "home kitchen",
@@ -1305,35 +1467,22 @@ export default function Home() {
       let collected = [];
 
       try {
-        /*
-         * Continue through the catalog searches until
-         * we have at least 375 UNIQUE usable candidates.
-         *
-         * Search itself is never limited to 375.
-         */
         for (const query of queries) {
           if (cancelled) {
             return;
           }
 
-          const results =
-            await fetchAllCJPages(
-              query
+          /*
+           * Only fetch enough pages to reach the
+           * homepage collection size.
+           */
+          collected =
+            await fetchCJPagesUntilLimit(
+              query,
+              HOME_PRODUCT_LIMIT,
+              collected
             );
 
-          collected =
-            uniqueProducts([
-              ...collected,
-              ...results,
-            ]);
-
-          /*
-           * Once we have more than 375 candidates,
-           * we can stop searching additional broad
-           * home queries.
-           *
-           * This does NOT limit the search feature.
-           */
           if (
             collected.length >=
             HOME_PRODUCT_LIMIT
@@ -1345,13 +1494,18 @@ export default function Home() {
         const converted =
           collected
             .map(
-              (product, index) =>
+              (
+                product,
+                index
+              ) =>
                 convertSupplierProduct(
                   product,
                   index
                 )
             )
-            .filter(Boolean);
+            .filter(
+              Boolean
+            );
 
         const unique =
           uniqueProducts(
@@ -1372,11 +1526,11 @@ export default function Home() {
           );
 
           if (
-            finalProducts.length <
-            HOME_PRODUCT_LIMIT
+            finalProducts.length ===
+            0
           ) {
             setError(
-              `Marlow loaded ${finalProducts.length} live products because the available CJ catalog returned fewer usable unique products for the home collection.`
+              "We couldn't load the live product catalog right now."
             );
           }
         }
@@ -1387,13 +1541,17 @@ export default function Home() {
         );
 
         if (!cancelled) {
+          setHomeProducts([]);
+
           setError(
             "We couldn't load the live product catalog right now."
           );
         }
       } finally {
         if (!cancelled) {
-          setLoadingHome(false);
+          setLoadingHome(
+            false
+          );
         }
       }
     }
@@ -1406,19 +1564,28 @@ export default function Home() {
   }, []);
 
   /* =======================================================
-     CATEGORY PAGE — ALL AVAILABLE MATCHING PRODUCTS
+     CATEGORY PAGE
+     
+     Categories still load ALL available matching results.
   ======================================================= */
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadCategory() {
-      if (category === "All") {
-        setCategoryProducts([]);
+      if (
+        category ===
+        "All"
+      ) {
+        setCategoryProducts(
+          []
+        );
         return;
       }
 
-      setLoadingCategory(true);
+      setLoadingCategory(
+        true
+      );
       setError("");
 
       try {
@@ -1429,7 +1596,9 @@ export default function Home() {
 
         if (!cancelled) {
           setCategoryProducts(
-            uniqueProducts(products)
+            uniqueProducts(
+              products
+            )
           );
         }
       } catch (err) {
@@ -1439,14 +1608,19 @@ export default function Home() {
         );
 
         if (!cancelled) {
-          setCategoryProducts([]);
+          setCategoryProducts(
+            []
+          );
+
           setError(
             "We couldn't load this category right now."
           );
         }
       } finally {
         if (!cancelled) {
-          setLoadingCategory(false);
+          setLoadingCategory(
+            false
+          );
         }
       }
     }
@@ -1459,17 +1633,29 @@ export default function Home() {
   }, [category]);
 
   /* =======================================================
-     SEARCH — ALL MATCHING CJ RESULTS
+     SEARCH
+     
+     Search still loads ALL matching CJ pages.
+     There is NO 375-result cap here.
   ======================================================= */
 
-  async function performSearch(query) {
+  async function performSearch(
+    query
+  ) {
     const cleanQuery =
       query.trim();
 
     if (!cleanQuery) {
-      setSubmittedSearch("");
-      setSearchProducts([]);
+      setSubmittedSearch(
+        ""
+      );
+
+      setSearchProducts(
+        []
+      );
+
       setError("");
+
       return;
     }
 
@@ -1481,13 +1667,6 @@ export default function Home() {
     setError("");
 
     try {
-      /*
-       * fetchAllCJPages continues until CJ says
-       * there are no more pages.
-       *
-       * There is NO 100-result, 375-result,
-       * or 5,000-result search cap.
-       */
       const results =
         await fetchAllCJPages(
           cleanQuery
@@ -1496,27 +1675,28 @@ export default function Home() {
       const converted =
         results
           .map(
-            (product, index) =>
+            (
+              product,
+              index
+            ) =>
               convertSupplierProduct(
                 product,
                 index
               )
           )
-          .filter(Boolean);
+          .filter(
+            Boolean
+          );
 
       const unique =
         uniqueProducts(
           converted
         );
 
-      /*
-       * Do not slice this array.
-       *
-       * Search results remain ALL unique
-       * matching results returned by CJ.
-       */
       setSearchProducts(
-        sortProducts(unique)
+        sortProducts(
+          unique
+        )
       );
     } catch (err) {
       console.error(
@@ -1530,7 +1710,9 @@ export default function Home() {
         "We couldn't complete that search right now."
       );
     } finally {
-      setSearching(false);
+      setSearching(
+        false
+      );
     }
   }
 
@@ -1538,7 +1720,9 @@ export default function Home() {
      ACCOUNT
   ======================================================= */
 
-  function handleAccountSubmit(data) {
+  function handleAccountSubmit(
+    data
+  ) {
     const email =
       String(
         data?.email || ""
@@ -1561,6 +1745,7 @@ export default function Home() {
     /*
      * SIGN IN
      */
+
     if (data.signingIn) {
       try {
         const stored =
@@ -1572,28 +1757,39 @@ export default function Home() {
           alert(
             "No Marlow account was found on this browser. Please create an account first."
           );
+
           return;
         }
 
         const saved =
-          JSON.parse(stored);
+          JSON.parse(
+            stored
+          );
 
         if (
-          saved.email !== email ||
-          saved.password !== password
+          saved.email !==
+            email ||
+          saved.password !==
+            password
         ) {
           alert(
             "The email or password is incorrect."
           );
+
           return;
         }
 
-        setAccount(saved);
+        setAccount(
+          saved
+        );
+
         return;
-      } catch (error) {
+      } catch (
+        accountError
+      ) {
         console.error(
           "Account sign-in error:",
-          error
+          accountError
         );
 
         alert(
@@ -1607,6 +1803,7 @@ export default function Home() {
     /*
      * CREATE ACCOUNT
      */
+
     const name =
       String(
         data?.name || ""
@@ -1616,6 +1813,7 @@ export default function Home() {
       alert(
         "Please enter your name."
       );
+
       return;
     }
 
@@ -1642,10 +1840,12 @@ export default function Home() {
       alert(
         "Your Marlow account has been created."
       );
-    } catch (error) {
+    } catch (
+      accountError
+    ) {
       console.error(
         "Account creation error:",
-        error
+        accountError
       );
 
       alert(
@@ -1662,55 +1862,70 @@ export default function Home() {
      CART
   ======================================================= */
 
-  function addToCart(product) {
-    setCart((current) => {
-      const existing =
-        current.find(
-          (item) =>
-            item.id ===
-            product.id
-        );
+  function addToCart(
+    product
+  ) {
+    setCart(
+      (current) => {
+        const existing =
+          current.find(
+            (item) =>
+              item.id ===
+              product.id
+          );
 
-      if (existing) {
-        return current.map(
-          (item) =>
-            item.id ===
-            product.id
-              ? {
-                  ...item,
-                  quantity:
-                    item.quantity +
-                    1,
-                }
-              : item
-        );
+        if (existing) {
+          return current.map(
+            (item) =>
+              item.id ===
+              product.id
+                ? {
+                    ...item,
+                    quantity:
+                      item.quantity +
+                      1,
+                  }
+                : item
+          );
+        }
+
+        return [
+          ...current,
+          {
+            ...product,
+            quantity: 1,
+          },
+        ];
       }
+    );
 
-      return [
-        ...current,
-        {
-          ...product,
-          quantity: 1,
-        },
-      ];
-    });
-
-    setCartOpen(true);
+    setCartOpen(
+      true
+    );
   }
 
-  function removeFromCart(id) {
-    setCart((current) =>
-      current.filter(
-        (item) =>
-          item.id !== id
-      )
+  function removeFromCart(
+    id
+  ) {
+    setCart(
+      (current) =>
+        current.filter(
+          (item) =>
+            item.id !==
+            id
+        )
     );
   }
 
   function handleCheckout() {
     if (!account) {
-      setCartOpen(false);
-      setAccountOpen(true);
+      setCartOpen(
+        false
+      );
+
+      setAccountOpen(
+        true
+      );
 
       alert(
         "Please create a Marlow account or sign in before continuing to checkout."
@@ -1730,24 +1945,19 @@ export default function Home() {
 
   const displayedProducts =
     useMemo(() => {
-      if (submittedSearch) {
-        /*
-         * ALL search results.
-         */
+      if (
+        submittedSearch
+      ) {
         return searchProducts;
       }
 
-      if (category !== "All") {
-        /*
-         * ALL products loaded for this category.
-         */
+      if (
+        category !==
+        "All"
+      ) {
         return categoryProducts;
       }
 
-      /*
-       * Home page only:
-       * exactly up to 375 unique products.
-       */
       return homeProducts.slice(
         0,
         HOME_PRODUCT_LIMIT
@@ -1779,9 +1989,18 @@ export default function Home() {
           <button
             className="logo"
             onClick={() => {
-              setCategory("All");
-              setSubmittedSearch("");
-              setSearch("");
+              setCategory(
+                "All"
+              );
+
+              setSubmittedSearch(
+                ""
+              );
+
+              setSearch(
+                ""
+              );
+
               setError("");
             }}
           >
@@ -1790,7 +2009,9 @@ export default function Home() {
 
           <form
             className="search-form"
-            onSubmit={(event) => {
+            onSubmit={(
+              event
+            ) => {
               event.preventDefault();
 
               performSearch(
@@ -1800,9 +2021,12 @@ export default function Home() {
           >
             <input
               value={search}
-              onChange={(event) =>
+              onChange={(
+                event
+              ) =>
                 setSearch(
-                  event.target.value
+                  event.target
+                    .value
                 )
               }
               placeholder="Search products..."
@@ -1817,7 +2041,9 @@ export default function Home() {
           <div className="header-actions">
             <button
               onClick={() =>
-                setAccountOpen(true)
+                setAccountOpen(
+                  true
+                )
               }
             >
               {account
@@ -1846,14 +2072,19 @@ export default function Home() {
             <button
               className="cart-button"
               onClick={() =>
-                setCartOpen(true)
+                setCartOpen(
+                  true
+                )
               }
             >
               Cart
 
-              {cartCount > 0 && (
+              {cartCount >
+                0 && (
                 <span className="cart-count">
-                  {cartCount}
+                  {
+                    cartCount
+                  }
                 </span>
               )}
             </button>
@@ -1883,7 +2114,9 @@ export default function Home() {
                     ""
                   );
 
-                  setSearch("");
+                  setSearch(
+                    ""
+                  );
 
                   setSearchProducts(
                     []
@@ -1900,7 +2133,8 @@ export default function Home() {
       </nav>
 
       {!submittedSearch &&
-        category === "All" && (
+        category ===
+          "All" && (
           <section className="hero">
             <div className="hero-content">
               <span className="hero-eyebrow">
@@ -1916,9 +2150,10 @@ export default function Home() {
                 Shop a growing
                 collection of
                 products across
-                electronics, home,
-                clothing, beauty,
-                sports, travel and
+                electronics,
+                home, clothing,
+                beauty, sports,
+                travel and
                 more.
               </p>
 
@@ -1981,27 +2216,11 @@ export default function Home() {
                 </span>
 
                 <h2>
-                  All{" "}
-                  {
-                    HOME_PRODUCT_LIMIT
-                  }{" "}
-                  Products
+                  Featured Products
                 </h2>
               </>
             )}
           </div>
-
-          {!submittedSearch &&
-            category ===
-              "All" &&
-            !loadingHome && (
-              <div className="product-count">
-                {
-                  displayedProducts.length
-                }{" "}
-                products
-              </div>
-            )}
 
           {submittedSearch &&
             !searching && (
@@ -2074,36 +2293,42 @@ export default function Home() {
           </div>
 
           <div>
-            <h4>Shop</h4>
+            <h4>
+              Shop
+            </h4>
 
             {CATEGORIES.slice(
               1
-            ).map((item) => (
-              <button
-                key={item}
-                onClick={() => {
-                  setCategory(
-                    item
-                  );
+            ).map(
+              (item) => (
+                <button
+                  key={item}
+                  onClick={() => {
+                    setCategory(
+                      item
+                    );
 
-                  setSubmittedSearch(
-                    ""
-                  );
+                    setSubmittedSearch(
+                      ""
+                    );
 
-                  setSearch("");
+                    setSearch(
+                      ""
+                    );
 
-                  window.scrollTo(
-                    {
-                      top: 0,
-                      behavior:
-                        "smooth",
-                    }
-                  );
-                }}
-              >
-                {item}
-              </button>
-            ))}
+                    window.scrollTo(
+                      {
+                        top: 0,
+                        behavior:
+                          "smooth",
+                      }
+                    );
+                  }}
+                >
+                  {item}
+                </button>
+              )
+            )}
           </div>
         </div>
 
@@ -2133,7 +2358,9 @@ export default function Home() {
         <CartDrawer
           cart={cart}
           onClose={() =>
-            setCartOpen(false)
+            setCartOpen(
+              false
+            )
           }
           onRemove={
             removeFromCart
@@ -2783,8 +3010,6 @@ export default function Home() {
           font-size: 45px;
           margin-bottom: 10px;
         }
-
-        /* ACCOUNT */
 
         .account-backdrop {
           z-index: 110;
