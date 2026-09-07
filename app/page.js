@@ -8,6 +8,9 @@ const HOME_CACHE_KEY = "marlow-home-products";
 const HOME_CACHE_TIME_KEY = "marlow-home-products-time";
 const HOME_CACHE_MAX_AGE = 10 * 60 * 1000;
 
+const CATEGORY_CACHE_KEY = "marlow-category-cache";
+const CATEGORY_CACHE_MAX_AGE = 10 * 60 * 1000;
+
 const CATEGORIES = [
   "All",
   "Electronics",
@@ -964,8 +967,105 @@ async function loadHomepageProducts(
 }
 
 /* =========================================================
+   CATEGORY CACHE
+========================================================= */
+
+function getCategoryCache() {
+  try {
+    const raw =
+      sessionStorage.getItem(
+        CATEGORY_CACHE_KEY
+      );
+
+    if (!raw) {
+      return {};
+    }
+
+    const parsed =
+      JSON.parse(raw);
+
+    if (
+      !parsed ||
+      typeof parsed !==
+        "object"
+    ) {
+      return {};
+    }
+
+    return parsed;
+  } catch (error) {
+    console.error(
+      "Category cache read error:",
+      error
+    );
+
+    return {};
+  }
+}
+
+function getCachedCategoryProducts(
+  category
+) {
+  const cache =
+    getCategoryCache();
+
+  const entry =
+    cache?.[category];
+
+  if (
+    !entry ||
+    !Array.isArray(
+      entry.products
+    ) ||
+    !entry.createdAt
+  ) {
+    return null;
+  }
+
+  if (
+    Date.now() -
+      Number(
+        entry.createdAt
+      ) >
+    CATEGORY_CACHE_MAX_AGE
+  ) {
+    return null;
+  }
+
+  return entry.products;
+}
+
+function saveCachedCategoryProducts(
+  category,
+  products
+) {
+  try {
+    const cache =
+      getCategoryCache();
+
+    cache[category] = {
+      createdAt: Date.now(),
+      products:
+        uniqueProducts(
+          products
+        ),
+    };
+
+    sessionStorage.setItem(
+      CATEGORY_CACHE_KEY,
+      JSON.stringify(cache)
+    );
+  } catch (error) {
+    console.error(
+      "Category cache save error:",
+      error
+    );
+  }
+}
+
+/* =========================================================
    CATEGORY LOADER
-   FAST INITIAL CATEGORY LOAD
+   RESTORED ORIGINAL SEARCH BEHAVIOR
 ========================================================= */
 
 async function fetchCategoryProducts(
@@ -973,98 +1073,160 @@ async function fetchCategoryProducts(
   signal,
   onProducts
 ) {
-  const query =
-    CATEGORY_SEARCHES[category];
-
-  if (!query) {
-    return [];
-  }
+  const queries =
+    CATEGORY_VARIANTS[
+      category
+    ] || [
+      CATEGORY_SEARCHES[
+        category
+      ],
+    ];
 
   let products = [];
 
-  if (signal?.aborted) {
-    throw new DOMException(
-      "Request cancelled",
-      "AbortError"
-    );
-  }
-
-  try {
-    await fetchAllCJPages(
-      query,
-      signal,
-      (batch) => {
-        if (signal?.aborted) {
-          throw new DOMException(
-            "Request cancelled",
-            "AbortError"
-          );
-        }
-
-        const converted =
-          batch
-            .map(
-              (
-                product,
-                index
-              ) =>
-                convertSupplierProduct(
-                  product,
-                  products.length +
-                    index
-                )
-            )
-            .filter(Boolean);
-
-        products =
-          uniqueProducts([
-            ...products,
-            ...converted,
-          ]);
-
-        const categorized =
-          products.filter(
-            (product) =>
-              matchesCategory(
-                product,
-                category
-              )
-          );
-
-        onProducts(
-          sortProducts(
-            categorized
-          )
-        );
-      }
-    );
-  } catch (error) {
-    if (
-      error?.name ===
-      "AbortError"
-    ) {
-      throw error;
-    }
-
-    console.error(
-      `Category query failed: ${query}`,
-      error
+  const cached =
+    getCachedCategoryProducts(
+      category
     );
 
-    throw error;
-  }
+  if (
+    cached &&
+    cached.length
+  ) {
+    products =
+      uniqueProducts(
+        cached
+      );
 
-  return sortProducts(
-    uniqueProducts(
+    const categorizedCached =
       products.filter(
         (product) =>
           matchesCategory(
             product,
             category
           )
+      );
+
+    if (
+      categorizedCached.length
+    ) {
+      onProducts(
+        sortProducts(
+          categorizedCached
+        )
+      );
+    }
+  }
+
+  for (const query of queries) {
+    if (
+      signal?.aborted
+    ) {
+      throw new DOMException(
+        "Request cancelled",
+        "AbortError"
+      );
+    }
+
+    try {
+      await fetchAllCJPages(
+        query,
+        signal,
+        (batch) => {
+          if (
+            signal?.aborted
+          ) {
+            throw new DOMException(
+              "Request cancelled",
+              "AbortError"
+            );
+          }
+
+          const converted =
+            batch
+              .map(
+                (
+                  product,
+                  index
+                ) =>
+                  convertSupplierProduct(
+                    product,
+                    products.length +
+                      index
+                  )
+              )
+              .filter(Boolean);
+
+          products =
+            uniqueProducts([
+              ...products,
+              ...converted,
+            ]);
+
+          const categorized =
+            products.filter(
+              (product) =>
+                matchesCategory(
+                  product,
+                  category
+                )
+            );
+
+          const sorted =
+            sortProducts(
+              categorized
+            );
+
+          if (
+            sorted.length
+          ) {
+            onProducts(
+              sorted
+            );
+          }
+        }
+      );
+    } catch (error) {
+      if (
+        error?.name ===
+        "AbortError"
+      ) {
+        throw error;
+      }
+
+      console.error(
+        `Category query failed: ${query}`,
+        error
+      );
+    }
+  }
+
+  const categorized =
+    products.filter(
+      (product) =>
+        matchesCategory(
+          product,
+          category
+        )
+    );
+
+  const finalProducts =
+    sortProducts(
+      uniqueProducts(
+        categorized
       )
-    )
-  );
+    );
+
+  if (
+    finalProducts.length
+  ) {
+    saveCachedCategoryProducts(
+      category,
+      finalProducts
+    );
+  }
+
+  return finalProducts;
 }
 
 /* =========================================================
@@ -2204,9 +2366,30 @@ export default function Home() {
 
     let cancelled = false;
 
-    setLoadingCategory(true);
-    setCategoryProducts([]);
+    const cached =
+      getCachedCategoryProducts(
+        category
+      );
+
     setError("");
+
+    if (
+      cached &&
+      cached.length
+    ) {
+      setCategoryProducts(
+        uniqueProducts(
+          cached
+        )
+      );
+
+      setLoadingCategory(
+        false
+      );
+    } else {
+      setCategoryProducts([]);
+      setLoadingCategory(true);
+    }
 
     async function loadCategory() {
       try {
@@ -2222,15 +2405,33 @@ export default function Home() {
                 return;
               }
 
-              setCategoryProducts(
+              const unique =
                 uniqueProducts(
                   productsSoFar
-                )
-              );
+                );
 
-              setLoadingCategory(
-                false
-              );
+              if (
+                unique.length
+              ) {
+                setCategoryProducts(
+                  unique
+                );
+
+                /*
+                 * IMPORTANT:
+                 * Keep loading true until
+                 * actual category products
+                 * have appeared.
+                 *
+                 * This prevents "No products
+                 * available" from appearing
+                 * while the remaining category
+                 * searches are still running.
+                 */
+                setLoadingCategory(
+                  false
+                );
+              }
             }
           );
 
@@ -2238,10 +2439,13 @@ export default function Home() {
           !cancelled &&
           !controller.signal.aborted
         ) {
-          setCategoryProducts(
+          const finalProducts =
             uniqueProducts(
               products
-            )
+            );
+
+          setCategoryProducts(
+            finalProducts
           );
 
           setLoadingCategory(
@@ -2264,8 +2468,15 @@ export default function Home() {
         if (
           !cancelled
         ) {
+          /*
+           * Only show a true category
+           * error when the category did
+           * not already give us cached or
+           * loaded products.
+           */
           setCategoryProducts(
-            []
+            (current) =>
+              current
           );
 
           setError(
@@ -2681,7 +2892,11 @@ export default function Home() {
 
   const showLoading =
     searching ||
-    loadingCategory ||
+    (
+      loadingCategory &&
+      displayedProducts.length ===
+        0
+    ) ||
     (
       loadingHome &&
       displayedProducts.length ===
