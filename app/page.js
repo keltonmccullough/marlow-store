@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 const HOME_PRODUCT_LIMIT = 375;
 const PAGE_SIZE = 100;
@@ -1988,6 +1989,7 @@ function MarlowAssistant({
 ========================================================= */
 
 export default function Home() {
+  const router = useRouter();
   const [search, setSearch] =
     useState("");
 
@@ -3142,12 +3144,25 @@ export default function Home() {
             products={
               displayedProducts
             }
-            onOpen={
-              setSelectedProduct
-            }
-            onAdd={
-              addToCart
-            }
+onOpen={(product) => {
+  try {
+    sessionStorage.setItem(
+      "marlow-selected-product",
+      JSON.stringify(product)
+    );
+  } catch (storageError) {
+    console.error(
+      "Could not save selected product:",
+      storageError
+    );
+  }
+
+  router.push(
+    `/product/${encodeURIComponent(
+      product.id
+    )}`
+  );
+}}
           />
         )}
       </section>
