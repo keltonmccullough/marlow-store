@@ -2,6 +2,54 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+function customerFriendlyDescription(description) {
+  if (!description) {
+    return {
+      text: "Shop this product from Marlow.",
+      bullets: [],
+    };
+  }
+
+  const html = String(description);
+
+  const bulletMatches = [
+    ...html.matchAll(
+      /<li[^>]*>([\s\S]*?)<\/li>/gi
+    ),
+  ];
+
+  const bullets = bulletMatches
+    .map((match) =>
+      match[1]
+        .replace(/<[^>]+>/g, " ")
+        .replace(/&nbsp;/gi, " ")
+        .replace(/&amp;/gi, "&")
+        .replace(/&quot;/gi, '"')
+        .replace(/&#39;/gi, "'")
+        .replace(/\s+/g, " ")
+        .trim()
+        .replace(/^[-•]\s*/, "")
+    )
+    .filter(Boolean)
+    .slice(0, 6);
+
+  const text = html
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return {
+    text:
+      text.length > 500
+        ? `${text.slice(0, 500).replace(/\s+\S*$/, "")}…`
+        : text,
+    bullets,
+  };
+}
 
 export default function ProductPage() {
   const params = useParams();
@@ -542,14 +590,31 @@ export default function ProductPage() {
                 {Number(product.price || 0).toFixed(2)}
               </div>
 
-              <h2 className="description-title">
-                Product Details
-              </h2>
+             <h2 className="description-title">
+  Product Details
+</h2>
 
-              <p className="description">
-                {product.description ||
-                  "Product details are currently unavailable."}
-              </p>
+{(() => {
+  const details = customerFriendlyDescription(
+    product.description
+  );
+
+  return (
+    <>
+      <p className="description">
+        {details.text}
+      </p>
+
+      {details.bullets.length > 0 && (
+        <ul className="product-description-list">
+          {details.bullets.map((item, index) => (
+            <li key={index}>{item}</li>
+          ))}
+        </ul>
+      )}
+    </>
+  );
+})()}
 
               {(product.brand ||
                 product.sku ||
