@@ -7,7 +7,7 @@ const HOME_PRODUCT_LIMIT = 375;
 const PAGE_SIZE = 100;
 const HOME_CACHE_KEY = "marlow-home-products";
 const HOME_CACHE_TIME_KEY = "marlow-home-products-time";
-const HOME_CACHE_MAX_AGE = 10 * 60 * 1000;
+const HOME_CACHE_MAX_AGE = 0;
 
 const CATEGORY_CACHE_KEY = "marlow-category-cache";
 const CATEGORY_CACHE_MAX_AGE = 10 * 60 * 1000;
@@ -885,15 +885,12 @@ async function loadHomepageProducts(
             current
           );
 
-        onProducts(
-          sortProducts(
-            unique
-          ).slice(
-            0,
-            target
-          )
-        );
-
+onProducts(
+  unique.slice(
+    0,
+    target
+  )
+);
         if (
           unique.length >=
           target
@@ -946,27 +943,22 @@ async function loadHomepageProducts(
     }
   }
 
-  return sortProducts(
-    uniqueProducts(
-      collected
-        .map(
-          (
+return shuffleProducts(
+  uniqueProducts(
+    collected
+      .map(
+        (product, index) =>
+          convertSupplierProduct(
             product,
             index
-          ) =>
-            convertSupplierProduct(
-              product,
-              index
-            )
-        )
-        .filter(Boolean)
-    )
+          )
+      )
+      .filter(Boolean)
   ).slice(
     0,
     target
-  );
-}
-
+  )
+);
 /* =========================================================
    CATEGORY CACHE
 ========================================================= */
@@ -2275,20 +2267,6 @@ export default function Home() {
               }
             }
           );
-
-        if (
-          !cancelled &&
-          !controller.signal.aborted &&
-          finalProducts.length
-        ) {
-          setHomeProducts(
-            finalProducts
-          );
-
-          setLoadingHome(
-            false
-          );
-        }
 
         if (
           !cancelled &&
