@@ -289,6 +289,141 @@ function uniqueProducts(products) {
 
   return unique;
 }
+function getVariantGroupName(name) {
+  let clean = String(name || "")
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/\[[^\]]*\]/g, " ");
+
+  const colors = [
+    "black",
+    "white",
+    "red",
+    "blue",
+    "green",
+    "yellow",
+    "orange",
+    "purple",
+    "pink",
+    "brown",
+    "gray",
+    "grey",
+    "beige",
+    "cream",
+    "khaki",
+    "navy",
+    "navy blue",
+    "sky blue",
+    "light blue",
+    "dark blue",
+    "light green",
+    "dark green",
+    "light pink",
+    "hot pink",
+    "rose",
+    "gold",
+    "silver",
+    "golden",
+    "multicolor",
+    "multi color",
+    "rainbow",
+  ];
+
+  for (const color of colors) {
+    clean = clean.replace(
+      new RegExp(
+        `(^|\\s|[-/,])${color.replace(
+          / /g,
+          "\\s+"
+        )}(?=\\s|[-/,]|$)`,
+        "gi"
+      ),
+      " "
+    );
+  }
+
+  return clean
+    .replace(
+      /\b(color|colour|colors|colours)\b/gi,
+      " "
+    )
+    .replace(/\s+/g, " ")
+    .replace(/[-/,]+/g, " ")
+    .trim();
+}
+
+function groupProductsByVariant(products) {
+  const groups = new Map();
+
+  for (const product of products || []) {
+    if (!product) continue;
+
+    const groupName =
+      getVariantGroupName(product.name);
+
+    if (!groupName) {
+      groups.set(
+        `single-${product.id}`,
+        {
+          ...product,
+          variants: [
+            {
+              id: product.id,
+              name: product.name,
+              price: product.price,
+              cost: product.cost,
+              image: product.image,
+            },
+          ],
+        }
+      );
+
+      continue;
+    }
+
+    const groupKey =
+      `${product.category || "Home"}|${groupName}`;
+
+    if (!groups.has(groupKey)) {
+      groups.set(groupKey, {
+        ...product,
+        variants: [],
+      });
+    }
+
+    const group = groups.get(groupKey);
+
+    const alreadyAdded =
+      group.variants.some(
+        (variant) =>
+          String(variant.id) ===
+          String(product.id)
+      );
+
+    if (!alreadyAdded) {
+      group.variants.push({
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        cost: product.cost,
+        image: product.image,
+      });
+    }
+
+    if (
+      Number(product.price || 0) <
+      Number(group.price || 0)
+    ) {
+      group.price = product.price;
+      group.cost = product.cost;
+      group.image = product.image;
+      group.id = product.id;
+    }
+  }
+
+  return Array.from(groups.values());
+}
+
 
 /* =========================================================
    MARLOW PRICING
@@ -2877,7 +3012,9 @@ export default function Home() {
       );
     }
 
-    const sorted = [...products];
+  const sorted = groupProductsByVariant(
+  uniqueProducts(products)
+);
 
     if (sortMode === "price-low") {
       sorted.sort(
