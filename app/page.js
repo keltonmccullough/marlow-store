@@ -2015,6 +2015,9 @@ export default function Home() {
 
   const [category, setCategory] =
     useState("All");
+  
+  const [sortMode, setSortMode] =
+  useState("recommended");
 
   const [homeProducts, setHomeProducts] =
     useState([]);
@@ -2859,31 +2862,78 @@ export default function Home() {
      DISPLAYED PRODUCTS
 ======================================================= */
 
-  const displayedProducts =
-    useMemo(() => {
-      if (
-        submittedSearch
-      ) {
-        return searchProducts;
-      }
+ const displayedProducts =
+  useMemo(() => {
+    let products = [];
 
-      if (
-        category !== "All"
-      ) {
-        return categoryProducts;
-      }
-
-      return homeProducts.slice(
+    if (submittedSearch) {
+      products = searchProducts;
+    } else if (category !== "All") {
+      products = categoryProducts;
+    } else {
+      products = homeProducts.slice(
         0,
         HOME_PRODUCT_LIMIT
       );
-    }, [
-      submittedSearch,
-      searchProducts,
-      category,
-      categoryProducts,
-      homeProducts,
-    ]);
+    }
+
+    const sorted = [...products];
+
+    if (sortMode === "price-low") {
+      sorted.sort(
+        (a, b) =>
+          Number(a?.price || 0) -
+          Number(b?.price || 0)
+      );
+    }
+
+    if (sortMode === "price-high") {
+      sorted.sort(
+        (a, b) =>
+          Number(b?.price || 0) -
+          Number(a?.price || 0)
+      );
+    }
+
+    if (sortMode === "under-10") {
+      return sorted.filter(
+        (product) =>
+          Number(product?.price || 0) < 10
+      );
+    }
+
+    if (sortMode === "under-25") {
+      return sorted.filter(
+        (product) =>
+          Number(product?.price || 0) < 25
+      );
+    }
+
+    if (sortMode === "under-50") {
+      return sorted.filter(
+        (product) =>
+          Number(product?.price || 0) < 50
+      );
+    }
+
+    if (sortMode === "deals") {
+      return sorted.filter(
+        (product) =>
+          Number(product?.cost || 0) > 0 &&
+          Number(product?.price || 0) >
+            Number(product?.cost || 0)
+      );
+    }
+
+    return sorted;
+  }, [
+    submittedSearch,
+    searchProducts,
+    category,
+    categoryProducts,
+    homeProducts,
+    sortMode,
+  ]);
 
   const cartCount =
     cart.reduce(
@@ -3141,6 +3191,69 @@ export default function Home() {
             </p>
           </div>
         ) : (
+          <div
+  style={{
+    display: "flex",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    gap: "10px",
+    marginBottom: "20px",
+    flexWrap: "wrap",
+  }}
+>
+  <label
+    htmlFor="marlow-sort"
+    style={{
+      fontWeight: 600,
+    }}
+  >
+    Sort & Filter:
+  </label>
+
+  <select
+    id="marlow-sort"
+    value={sortMode}
+    onChange={(event) =>
+      setSortMode(event.target.value)
+    }
+    style={{
+      padding: "10px 14px",
+      borderRadius: "10px",
+      border: "1px solid #d8d8d8",
+      background: "#fff",
+      fontSize: "15px",
+      cursor: "pointer",
+    }}
+  >
+    <option value="recommended">
+      Recommended
+    </option>
+
+    <option value="price-low">
+      Price: Low to High
+    </option>
+
+    <option value="price-high">
+      Price: High to Low
+    </option>
+
+    <option value="under-10">
+      Under $10
+    </option>
+
+    <option value="under-25">
+      Under $25
+    </option>
+
+    <option value="under-50">
+      Under $50
+    </option>
+
+    <option value="deals">
+      Deals & Discounts
+    </option>
+  </select>
+</div>
           <ProductGrid
             products={
               displayedProducts
