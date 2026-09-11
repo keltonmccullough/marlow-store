@@ -58,6 +58,7 @@ export default function ProductPage() {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
+  const [selectedVariant, setSelectedVariant] = useState(null);
 
   useEffect(() => {
     try {
@@ -591,6 +592,60 @@ export default function ProductPage() {
               </div>
 
              <h2 className="description-title">
+                {Array.isArray(product.variants) &&
+  product.variants.length > 1 && (
+    <div
+      style={{
+        marginTop: "20px",
+        marginBottom: "20px",
+      }}
+    >
+      <h3
+        style={{
+          marginBottom: "10px",
+        }}
+      >
+        Choose an option
+      </h3>
+
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "10px",
+        }}
+      >
+        {product.variants.map((variant) => (
+          <button
+            key={variant.id}
+            type="button"
+            onClick={() =>
+              setSelectedVariant(variant)
+            }
+            style={{
+              padding: "10px 14px",
+              borderRadius: "8px",
+              border:
+                String(
+                  selectedVariant?.id
+                ) === String(variant.id)
+                  ? "2px solid #111"
+                  : "1px solid #ccc",
+              background:
+                String(
+                  selectedVariant?.id
+                ) === String(variant.id)
+                  ? "#f2f2f2"
+                  : "#fff",
+              cursor: "pointer",
+            }}
+          >
+            {variant.name}
+          </button>
+        ))}
+      </div>
+    </div>
+  )}
   Product Details
 </h2>
 
